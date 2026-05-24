@@ -52,6 +52,7 @@ On session start, read:
 - /forge-evolve — Evaluate ecosystem changes and evolution
 - /forge-safety-guard — Safety checks for dangerous operations
 - /forge-quality-gate — Quality gate enforcement
+- /forge-onboard — Rescan project structure
 
 ## Workflow Rules
 
