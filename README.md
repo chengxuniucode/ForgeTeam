@@ -70,6 +70,11 @@ forge init
 | `/forge-ship` | 手动提交并归档 |
 | `/forge-debug` | 验证失败后提供指导再继续 |
 | `/forge-checkpoint` | 会话结束前保存进度 |
+| `/forge-onboard` | 重新扫描项目结构 |
+| `/forge-learn` | 提取经验到记忆 |
+| `/forge-evolve` | 评估生态变化并自进化 |
+| `/forge-safety-guard` | 危险操作前安全检查 |
+| `/forge-quality-gate` | 阶段切换质量门禁 |
 
 详细说明见 [Skill 命令详解](docs/USAGE.md)
 

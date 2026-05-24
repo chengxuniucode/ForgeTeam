@@ -205,9 +205,9 @@ echo ""
 
 # ─── Documentation ───
 echo "Documentation:"
-check_file "USAGE.md"
-check_file "ROADMAP.md"
-check_file "CONTRIBUTING.md"
+check_file "docs/USAGE.md"
+check_file "docs/ROADMAP.md"
+check_file "docs/CONTRIBUTING.md"
 echo ""
 
 # ─── Evolution ───

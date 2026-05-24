@@ -1,0 +1,26 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Structure validation
+        run: bash tests/validate-structure.sh
+
+      - name: Integration test - init
+        run: bash tests/test-init.sh
+
+      - name: Integration test - generate
+        run: bash tests/test-generate.sh

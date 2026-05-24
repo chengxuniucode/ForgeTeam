@@ -50,6 +50,7 @@ Commands:
   sync          Sync upstream skill updates
   status        Show current task status
   config        View/edit configuration
+  uninstall     Remove ForgeTeam from system
   version       Show version
 
 Skill Commands (also available as slash commands in AI tools):
@@ -334,7 +335,7 @@ forge_onboard() {
   elif [ -f "src/main.ts" ]; then entry="src/main.ts"
   elif [ -f "src/index.js" ]; then entry="src/index.js"
   elif [ -f "index.js" ]; then entry="index.js"
-  elif [ -f "src/main/java" ]; then entry="src/main/java/"
+  elif [ -d "src/main/java" ]; then entry="src/main/java/"
   elif [ -f "main.go" ]; then entry="main.go"
   elif [ -f "src/main.rs" ]; then entry="src/main.rs"
   elif [ -f "manage.py" ]; then entry="manage.py"
@@ -400,172 +401,19 @@ forge_generate() {
 
   echo -e "${BLUE}Generating for: ${target}${NC}"
 
-  case "$target" in
-    claude)   generate_claude ;;
-    cursor)   generate_cursor ;;
-    codex)    generate_codex ;;
-    opencode) generate_opencode ;;
-    *) echo "Unknown target: $target. Valid: claude, cursor, codex, opencode"; exit 1 ;;
-  esac
+  local adapter_file="$FORGE_HOME/adapters/${target}.sh"
+  if [ ! -f "$adapter_file" ]; then
+    echo -e "${RED}Error: Adapter not found: ${adapter_file}${NC}"
+    echo "Valid targets: claude, cursor, codex, opencode"
+    exit 1
+  fi
+
+  source "$adapter_file"
+  "generate_${target}"
 
   echo -e "${GREEN}✓ Generated ${target} configuration${NC}"
 }
 
-generate_claude() {
-  mkdir -p .claude/commands
-
-  # Backup existing CLAUDE.md if user has customized it
-  if [ -f "CLAUDE.md" ]; then
-    if ! grep -Fq "This project uses ForgeTeam" CLAUDE.md 2>/dev/null; then
-      cp CLAUDE.md "CLAUDE.md.backup.$(date '+%Y%m%d%H%M%S')"
-      echo -e "  ${YELLOW}NOTE${NC}: Existing CLAUDE.md backed up (had custom content)"
-    fi
-  fi
-
-  cat > CLAUDE.md <<'CLAUDEEOF'
-# ForgeTeam
-
-This project uses ForgeTeam for AI-assisted development.
-
-## Auto-Loaded Context
-
-On session start, read:
-- .forgeteam/memory/project-map.md
-- .forgeteam/memory/state.md
-- .forgeteam/memory/preferences.md
-- .forgeteam/config.yaml
-
-## Available Commands
-
-- /forge-propose — Start a new feature proposal
-- /forge-html-prototype — Generate HTML prototype for visual confirmation
-- /forge-plan — Create execution plan
-- /forge-execute — Run task execution
-- /forge-review — Code review
-- /forge-verify — Quality verification
-- /forge-ship — Commit and archive
-- /forge-debug — Fix verification failures
-- /forge-checkpoint — Save progress
-- /forge-learn — Extract learnings to memory
-- /forge-evolve — Evaluate ecosystem changes and evolution
-- /forge-safety-guard — Safety checks for dangerous operations
-- /forge-quality-gate — Quality gate enforcement
-
-## Workflow Rules
-
-1. Auto-detect route level (micro/standard/full) based on change scope
-2. Follow skill instructions exactly
-3. Update state.md after each significant action
-4. Never skip verification gates
-5. Pause and ask human after 3 failed fix attempts
-6. Keep documentation in sync with code changes
-
-## Route Detection
-
-- Micro (< 50 lines, <= 3 files, no API/DB change): execute → verify → done
-- Standard (50-500 lines, <= 10 files): plan → [html] → execute → review → verify → ship
-- Full (> 500 lines, multi-module): propose → [html] → plan → execute → review → verify → ship
-
-Note: [html] = auto-insert html-prototype step when UI/page changes are involved
-
-CLAUDEEOF
-
-  for skill in propose html-prototype plan execute review verify ship debug checkpoint learn evolve safety-guard quality-gate; do
-    cat > ".claude/commands/forge-${skill}.md" <<EOF
-# forge ${skill}
-
-Execute the ForgeTeam ${skill} skill.
-
-Read and follow the instructions in the ForgeTeam ${skill} skill file at:
-\`\$HOME/.forgeteam/skills/${skill}/SKILL.md\`
-
-Context to load before execution:
-- .forgeteam/config.yaml
-- .forgeteam/memory/state.md
-- .forgeteam/memory/project-map.md
-- .forgeteam/memory/preferences.md
-- specs/active/ (if exists)
-EOF
-  done
-}
-
-generate_cursor() {
-  mkdir -p .cursor/rules
-
-  cat > .cursor/rules/forgeteam.mdc <<'EOF'
----
-description: ForgeTeam AI Development Framework
-globs: ["**/*"]
-alwaysApply: true
----
-
-# ForgeTeam Rules for Cursor
-
-## Session Start
-Load context from .forgeteam/memory/ and .forgeteam/config.yaml
-
-## Workflow
-1. Auto-detect route: micro (<50 lines) / standard / full (>500 lines)
-2. Follow skill-specific instructions
-3. Verify before shipping: Build → Test → Run → Safety
-4. Update .forgeteam/memory/state.md after actions
-5. Keep documentation in sync with code changes
-
-## Key Files
-- .forgeteam/config.yaml — Project configuration
-- .forgeteam/memory/state.md — Current state
-- specs/active/ — Active specifications
-- specs/archived/ — Completed specs
-
-EOF
-}
-
-generate_codex() {
-  cat > codex.md <<'EOF'
-# ForgeTeam
-
-## Instructions
-
-This project uses ForgeTeam workflow. Follow these rules:
-
-1. Read .forgeteam/config.yaml for project settings
-2. Read .forgeteam/memory/state.md for current progress
-3. Auto-detect route level based on change scope
-4. Execute skills in order: propose → html → plan → execute → review → verify → ship
-5. Never skip verification (build + test + run + safety)
-6. Update state.md after significant actions
-7. Pause after 3 failed fix attempts
-8. Keep documentation in sync with code changes
-
-## Skill Locations
-Skills are in ~/.forgeteam/skills/{name}/SKILL.md
-
-EOF
-}
-
-generate_opencode() {
-  cat > AGENTS.md <<'EOF'
-# ForgeTeam
-
-## Context
-- Config: .forgeteam/config.yaml
-- State: .forgeteam/memory/state.md
-- Memory: .forgeteam/memory/
-
-## Workflow
-Auto-detect route → execute skills → verify → ship
-
-## Verification Gates
-1. Build Gate: compile/transpile must succeed
-2. Test Gate: all tests pass, coverage >= threshold
-3. Run Gate: service starts and responds
-4. Safety Gate: no secrets, no dangerous ops
-
-## Doc-Code Sync
-Keep documentation in specs/ aligned with code at all times.
-
-EOF
-}
 
 forge_sync() {
   local upstream_repo="https://github.com/chengxuninu/ForgeTeam.git"
@@ -689,6 +537,33 @@ forge_config() {
   fi
 }
 
+forge_uninstall() {
+  echo -e "${YELLOW}This will remove ForgeTeam from your system:${NC}"
+  echo "  • $FORGE_HOME (skills, config, upstream cache)"
+  echo "  • /usr/local/bin/forge (symlink)"
+  echo ""
+  read -p "Are you sure? [y/N] " confirm
+  [ "$confirm" != "y" ] && { echo "Cancelled."; exit 0; }
+
+  if [ -L "/usr/local/bin/forge" ]; then
+    if [ -w "/usr/local/bin" ]; then
+      rm -f /usr/local/bin/forge
+    else
+      sudo rm -f /usr/local/bin/forge
+    fi
+    echo -e "  ${GREEN}✓${NC} Removed /usr/local/bin/forge"
+  fi
+
+  if [ -d "$FORGE_HOME" ]; then
+    rm -rf "$FORGE_HOME"
+    echo -e "  ${GREEN}✓${NC} Removed $FORGE_HOME"
+  fi
+
+  echo ""
+  echo -e "${GREEN}ForgeTeam uninstalled.${NC}"
+  echo "Note: Project-local .forgeteam/ directories are not removed."
+}
+
 forge_skill() {
   local skill_name=$1
   echo -e "${BLUE}ForgeTeam: ${skill_name}${NC}"
@@ -710,6 +585,7 @@ case "${1:-}" in
   sync)       shift; forge_sync "$@" ;;
   status)     shift; forge_status "$@" ;;
   config)     shift; forge_config "$@" ;;
+  uninstall)  shift; forge_uninstall "$@" ;;
   version)    echo "ForgeTeam v${FORGE_VERSION}" ;;
   propose|html-prototype|plan|execute|review|verify|ship|debug|checkpoint|learn|evolve|safety-guard|quality-gate)
               forge_skill "$@" ;;

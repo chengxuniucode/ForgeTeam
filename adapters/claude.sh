@@ -1,22 +1,29 @@
 #!/bin/bash
-# ForgeTeam — Claude Code 适配器
-# 从 skills/ 源文件生成 .claude/ 配置
-
-set -euo pipefail
-
-FORGE_HOME="${FORGE_HOME:-$HOME/.forgeteam}"
+# ForgeTeam — Claude Code adapter
+# Generates CLAUDE.md, .claude/commands/, and .claude/settings.json
+# Called via: source adapters/claude.sh && generate_claude
 
 generate_claude() {
+  local forge_home="${FORGE_HOME:-$HOME/.forgeteam}"
+
   mkdir -p .claude/commands
 
-  generate_claude_md
-  generate_claude_commands
-  generate_claude_hooks
-
-  echo "✓ Claude Code configuration generated"
+  _claude_backup
+  _claude_generate_md
+  _claude_generate_commands "$forge_home"
+  _claude_generate_hooks
 }
 
-generate_claude_md() {
+_claude_backup() {
+  if [ -f "CLAUDE.md" ]; then
+    if ! grep -Fq "This project uses ForgeTeam" CLAUDE.md 2>/dev/null; then
+      cp CLAUDE.md "CLAUDE.md.backup.$(date '+%Y%m%d%H%M%S')"
+      echo "  NOTE: Existing CLAUDE.md backed up (had custom content)"
+    fi
+  fi
+}
+
+_claude_generate_md() {
   cat > CLAUDE.md <<'EOF'
 # ForgeTeam
 
@@ -33,6 +40,7 @@ On session start, read:
 ## Available Commands
 
 - /forge-propose — Start a new feature proposal
+- /forge-html-prototype — Generate HTML prototype for visual confirmation
 - /forge-plan — Create execution plan
 - /forge-execute — Run task execution
 - /forge-review — Code review
@@ -40,7 +48,10 @@ On session start, read:
 - /forge-ship — Commit and archive
 - /forge-debug — Fix verification failures
 - /forge-checkpoint — Save progress
-- /forge-status — Show current state
+- /forge-learn — Extract learnings to memory
+- /forge-evolve — Evaluate ecosystem changes and evolution
+- /forge-safety-guard — Safety checks for dangerous operations
+- /forge-quality-gate — Quality gate enforcement
 
 ## Workflow Rules
 
@@ -49,12 +60,15 @@ On session start, read:
 3. Update state.md after each significant action
 4. Never skip verification gates
 5. Pause and ask human after 3 failed fix attempts
+6. Keep documentation in sync with code changes
 
 ## Route Detection
 
 - Micro (< 50 lines, <= 3 files, no API/DB change): execute → verify → done
-- Standard (50-500 lines, <= 10 files): plan → execute → review → verify → ship
-- Full (> 500 lines, multi-module): propose → plan → execute → review → verify → ship
+- Standard (50-500 lines, <= 10 files): plan → [html] → execute → review → verify → ship
+- Full (> 500 lines, multi-module): propose → [html] → plan → execute → review → verify → ship
+
+Note: [html] = auto-insert html-prototype step when UI/page changes are involved
 
 ## Safety Rules
 
@@ -66,21 +80,22 @@ On session start, read:
 EOF
 }
 
-generate_claude_commands() {
-  local skills_dir="$FORGE_HOME/skills"
+_claude_generate_commands() {
+  local forge_home="$1"
+  local skills_dir="$forge_home/skills"
 
-  for skill_dir in "$skills_dir"/*/; do
-    [ ! -d "$skill_dir" ] && continue
-    local skill_name
-    skill_name=$(basename "$skill_dir")
-    [ "$skill_name" = "version.txt" ] && continue
+  # Generate commands from installed skills
+  if [ -d "$skills_dir" ]; then
+    for skill_dir in "$skills_dir"/*/; do
+      [ -d "$skill_dir" ] || continue
+      local skill_name
+      skill_name=$(basename "$skill_dir")
+      [ "$skill_name" = "version.txt" ] && continue
 
-    local skill_file="$skill_dir/SKILL.md"
-    [ ! -f "$skill_file" ] && continue
+      local skill_file="$skill_dir/SKILL.md"
+      [ -f "$skill_file" ] || continue
 
-    local cmd_file=".claude/commands/forge-${skill_name}.md"
-
-    cat > "$cmd_file" <<EOF
+      cat > ".claude/commands/forge-${skill_name}.md" <<CMDEOF
 # forge ${skill_name}
 
 Execute the ForgeTeam ${skill_name} skill.
@@ -96,20 +111,21 @@ Load before execution:
 - .forgeteam/memory/state.md
 - .forgeteam/memory/project-map.md
 - .forgeteam/memory/preferences.md
-EOF
-  done
+- specs/active/ (if exists)
+CMDEOF
+    done
+  fi
 
   # Handle extension skills
   if [ -d ".forgeteam/extensions/skills" ]; then
     for ext_skill in .forgeteam/extensions/skills/*/; do
-      [ ! -d "$ext_skill" ] && continue
+      [ -d "$ext_skill" ] || continue
       local ext_name
       ext_name=$(basename "$ext_skill")
       local ext_file="$ext_skill/SKILL.md"
-      [ ! -f "$ext_file" ] && continue
+      [ -f "$ext_file" ] || continue
 
-      local cmd_file=".claude/commands/forge-${ext_name}.md"
-      cat > "$cmd_file" <<EOF
+      cat > ".claude/commands/forge-${ext_name}.md" <<CMDEOF
 # forge ${ext_name} (extension)
 
 Execute the ForgeTeam ${ext_name} extension skill.
@@ -124,12 +140,19 @@ Load before execution:
 - .forgeteam/config.yaml
 - .forgeteam/memory/state.md
 - .forgeteam/memory/project-map.md
-EOF
+- specs/active/ (if exists)
+CMDEOF
     done
   fi
 }
 
-generate_claude_hooks() {
+_claude_generate_hooks() {
+  if [ -f ".claude/settings.json" ]; then
+    if ! grep -Fq "ForgeTeam" .claude/settings.json 2>/dev/null; then
+      return 0
+    fi
+  fi
+
   cat > .claude/settings.json <<'EOF'
 {
   "hooks": {
@@ -143,5 +166,3 @@ generate_claude_hooks() {
 }
 EOF
 }
-
-generate_claude

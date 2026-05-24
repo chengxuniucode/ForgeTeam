@@ -1,8 +1,7 @@
 #!/bin/bash
-# ForgeTeam — OpenCode 适配器
-# 生成 AGENTS.md 配置
-
-set -euo pipefail
+# ForgeTeam — OpenCode adapter
+# Generates AGENTS.md
+# Called via: source adapters/opencode.sh && generate_opencode
 
 generate_opencode() {
   cat > AGENTS.md <<'EOF'
@@ -15,50 +14,46 @@ generate_opencode() {
 - Memory: .forgeteam/memory/
 - Specs: specs/active/
 
-## Workflow
+## Route Detection
 
-Auto-detect route level based on change scope, then execute skills in order:
+- Micro (< 50 lines): execute → verify → done
+- Standard (50-500 lines): plan → [html] → execute → review → verify → ship
+- Full (> 500 lines): propose → [html] → plan → execute → review → verify → ship
 
-### Micro Route (< 50 lines, ≤ 3 files)
-execute → verify → done
-
-### Standard Route (50-500 lines, ≤ 10 files)
-plan → execute → review → verify → ship
-
-### Full Route (> 500 lines, multi-module)
-propose → plan → execute → review → verify → ship
+Note: [html] = auto-insert html-prototype step when UI/page changes are involved
 
 ## Verification Gates
 
-All changes must pass these gates before shipping:
+1. Build Gate: compile/transpile must succeed
+2. Test Gate: all tests pass, coverage >= threshold
+3. Run Gate: service starts and responds (skip for libraries)
+4. Safety Gate: no secrets, no dangerous ops
 
-1. **Build Gate**: compile/transpile must succeed
-2. **Test Gate**: all tests pass, coverage >= threshold
-3. **Run Gate**: service starts and responds (skipped for libraries)
-4. **Safety Gate**: no secrets, no dangerous operations
+## Available Skills
 
-## Safety Rules
+- propose, html-prototype, plan, execute, review, verify, ship
+- debug, checkpoint, learn, evolve, onboard
+- safety-guard, quality-gate
 
-- Never force push to protected branches
-- Never commit .env or credential files
-- Always run verification before committing
-- Pause after 3 failed fix attempts — ask human for guidance
+Skills located at: ~/.forgeteam/skills/{name}/SKILL.md
 
-## Skills
+## Doc-Code Sync
 
-Skills are defined in ~/.forgeteam/skills/{name}/SKILL.md and provide
-detailed instructions for each workflow phase.
+Keep documentation in specs/ aligned with code at all times.
+Review skill checks consistency; ship skill blocks if not in sync.
 
 ## Circuit Breaker
 
-If the same error persists after 3 fix attempts:
-1. Stop attempting fixes
-2. Report: what failed, what was tried, suggested directions
-3. Wait for human input before continuing
+- Single task: max 3 fix attempts, then pause for human
+- Cross-task: 2 consecutive failures → full stop
+- Safety gate failure → immediate stop, report to user
+
+## Safety Rules
+
+- Never force push to main/master
+- Never commit .env or secret files
+- Never rm -rf without confirmation
+- Always run verification before shipping
 
 EOF
-
-  echo "✓ OpenCode configuration generated"
 }
-
-generate_opencode

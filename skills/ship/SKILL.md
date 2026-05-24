@@ -106,7 +106,7 @@ git commit -m "{generated_message}"
 mv specs/active/{slug} specs/archived/{slug}
 
 # 添加完成标记
-echo "\n## Completed: $(date -I)" >> specs/archived/{slug}/tasks.md
+echo "\n## Completed: $(date '+%Y-%m-%d')" >> specs/archived/{slug}/tasks.md
 ```
 
 ### Step 7: 更新 Changelog（Full Route）
