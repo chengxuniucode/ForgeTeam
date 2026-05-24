@@ -68,7 +68,7 @@ bash "$FORGE_HOME/forge" generate --target cursor > /dev/null 2>&1
 assert_file_exists ".cursor/rules/forgeteam.mdc"
 assert_contains ".cursor/rules/forgeteam.mdc" "html-prototype"
 assert_contains ".cursor/rules/forgeteam.mdc" "[html]"
-assert_contains ".cursor/rules/forgeteam.mdc" "quality-gate"
+assert_contains ".cursor/rules/forgeteam.mdc" "memory"
 echo "  cursor: OK"
 
 # ─── Test: Codex ───

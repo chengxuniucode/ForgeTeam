@@ -373,15 +373,15 @@ Build Gate ──→ Test Gate ──→ Run Gate ──→ Safety Gate
 
 ---
 
-## `/forge-checkpoint` — 跨会话进度保存
+## `/forge-memory` — 进度保存 + 经验提取
 
-**保存：** 当前阶段、进度、上下文、恢复指令 → `.forgeteam/memory/state.md`
+统一管理跨会话记忆，合并原 checkpoint 和 learn 的功能：
+
+**进度保存：** 当前阶段、进度、上下文、恢复指令 → `.forgeteam/memory/state.md`
 
 **恢复：** 下次会话自动检测，提示"继续上次？"
 
----
-
-## `/forge-learn` — 经验提取
+**经验提取：**
 
 | 来源 | 写入 | 示例 |
 |------|------|------|
@@ -412,7 +412,7 @@ Build Gate ──→ Test Gate ──→ Run Gate ──→ Safety Gate
 │  ③ /forge-execute                                                        │
 │     → 逐 task 实现 → 逐 task 增量验证                                     │
 │     → tasks.md 实时更新进度                                               │
-│     → (中途可 /forge-checkpoint 保存)                                     │
+│     → (中途可 /forge-memory 保存)                                         │
 │                                                                          │
 │  ④ /forge-review                                                         │
 │     → 评审: 1 medium issue                                               │
@@ -424,7 +424,7 @@ Build Gate ──→ Test Gate ──→ Run Gate ──→ Safety Gate
 │  ⑥ /forge-ship                                                           │
 │     → git commit → spec 归档 → CHANGELOG 更新                            │
 │                                                                          │
-│  ⑦ /forge-learn                                                          │
+│  ⑦ /forge-memory                                                         │
 │     → 记录: 多币种用 BigDecimal 不用 float (decisions.md)                 │
 │                                                                          │
 │  Done. ✓                                                                 │

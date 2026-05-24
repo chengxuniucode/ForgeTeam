@@ -32,8 +32,7 @@ Note: [html] = auto-insert html-prototype step when UI/page changes are involved
 ## Available Skills
 
 - propose, html-prototype, plan, execute, review, verify, ship
-- debug, checkpoint, learn, evolve, onboard
-- safety-guard, quality-gate
+- debug, memory, evolve, onboard
 
 Skills located at: ~/.forgeteam/skills/{name}/SKILL.md
 

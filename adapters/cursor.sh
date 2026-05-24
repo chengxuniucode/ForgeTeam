@@ -47,15 +47,12 @@ Note: [html] = auto-insert html-prototype step when UI/page changes are involved
 - plan — Task breakdown and execution planning
 - execute — Step-by-step code implementation
 - review — Code review (security, performance, style)
-- verify — Build → Test → Run → Safety gates
+- verify — Safety guard + phase gate + Build → Test → Run → Safety pipeline
 - ship — Commit, archive, and changelog
 - debug — Fix verification failures
-- checkpoint — Save session progress
-- learn — Extract learnings to memory
+- memory — Save progress and extract learnings
 - evolve — Evaluate ecosystem changes
 - onboard — Scan project structure
-- safety-guard — Safety checks before dangerous ops
-- quality-gate — Phase transition quality enforcement
 
 ## Safety Rules
 

@@ -66,7 +66,7 @@ ForgeTeam 持续关注以下**技术方向**（不是特定项目），当任何
 | 多 Agent 协作成为主流 | 单 agent 不够，需要分工 | 升级 routing 支持多 skill 并行 |
 | Agent-to-Agent 协议成熟 | 工具间可互操作 | 新增 A2A adapter |
 | 自主执行能力增强 | AI 可完成更长链路 | 扩大 micro/standard 路由边界 |
-| 人类监督模式演进 | 断路器不再是唯一方式 | 升级 safety-guard 策略 |
+| 人类监督模式演进 | 断路器不再是唯一方式 | 升级 verify safety guard 策略 |
 
 ### 方向二：开发者工作流
 
@@ -92,7 +92,7 @@ ForgeTeam 持续关注以下**技术方向**（不是特定项目），当任何
 |------|------|---------|
 | AI 生成代码漏洞率数据 | 行业有可量化标准 | verify safety gate 校准 |
 | 形式化验证工具普及 | 可做数学级证明 | 新 gate 或 extension |
-| 供应链安全自动化 | 依赖审计可 AI 化 | safety-guard 增强 |
+| 供应链安全自动化 | 依赖审计可 AI 化 | verify safety guard 增强 |
 | 代码审计 AI 成熟 | 超越 lint 级别检查 | review skill 增强 |
 
 ### 方向五：协议与基础设施
@@ -128,9 +128,9 @@ forge evolve
 ```
 用户日常使用 ForgeTeam
         │
-        ├── learn skill 记录决策和问题
+        ├── memory skill 记录决策和问题
         ├── debug 记录修复模式
-        ├── checkpoint 记录中断原因
+        ├── memory 记录中断原因
         └── 用户 feedback (GitHub Issues)
         │
         ▼
