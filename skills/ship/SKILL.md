@@ -14,7 +14,7 @@ outputs:
   - git commit(s)
   - specs/archived/{slug}/ (moved from active)
   - CHANGELOG 更新 (full route)
-next: learn
+next: memory
 token_budget: 800
 constraints:
   must:

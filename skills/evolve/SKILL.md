@@ -168,7 +168,7 @@ constraints:
 ## 与其他 Skill 的关系
 
 ```
-learn (每次交付后提取经验)
+memory (每次交付后提取经验)
   │
   └──→ 积累数据 → 为 evolve 提供用户侧信号
   

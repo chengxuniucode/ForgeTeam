@@ -37,7 +37,7 @@ ForgeTeam 由两层组成：
 | 层 | 负责什么 | 执行者 |
 |----|---------|--------|
 | **CLI 层**（`forge` 命令） | 初始化、检测项目、生成配置、同步更新、运行验证 | 用户在终端执行 |
-| **Skill 层**（14 个 SKILL.md） | 需求澄清、任务拆解、代码实现、评审、文档同步 | AI 工具在会话中执行 |
+| **Skill 层**（10 个 SKILL.md） | 需求澄清、任务拆解、代码实现、评审、文档同步 | AI 工具在会话中执行 |
 
 CLI 提供基础设施，Skill 提供行为指南。AI 工具读取 skill 文件作为工作流程指令，用户可随时通过 `forge verify` 独立验证代码质量，不依赖 AI 自称完成。
 
@@ -79,15 +79,12 @@ CLI 提供基础设施，Skill 提供行为指南。AI 工具读取 skill 文件
 | `/forge-plan` | 手动触发任务拆解 |
 | `/forge-execute` | 从中断恢复继续执行 |
 | `/forge-review` | 手动触发代码评审 |
-| `/forge-verify` | 手动运行四关验证 |
+| `/forge-verify` | 运行验证（安全防护 + 阶段门禁 + 四关验证） |
 | `/forge-ship` | 手动提交并归档 |
 | `/forge-debug` | 验证失败后提供指导再继续 |
-| `/forge-checkpoint` | 会话结束前保存进度 |
-| `/forge-onboard` | 重新扫描项目结构 |
-| `/forge-learn` | 提取经验到记忆 |
+| `/forge-memory` | 保存进度 + 提取经验到记忆 |
 | `/forge-evolve` | 评估生态变化并自进化 |
-| `/forge-safety-guard` | 危险操作前安全检查 |
-| `/forge-quality-gate` | 阶段切换质量门禁 |
+| `/forge-onboard` | 重新扫描项目结构 |
 
 详细说明见 [Skill 命令详解](docs/USAGE.md)
 

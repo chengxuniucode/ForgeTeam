@@ -122,7 +122,7 @@ fi
 echo ""
 
 # ─── Skills ───
-echo "Skills (14 required):"
+echo "Skills (10 required):"
 required_skills=(
   "propose"
   "html-prototype"
@@ -133,11 +133,8 @@ required_skills=(
   "verify"
   "ship"
   "debug"
-  "checkpoint"
-  "learn"
+  "memory"
   "evolve"
-  "safety-guard"
-  "quality-gate"
 )
 
 for skill in "${required_skills[@]}"; do

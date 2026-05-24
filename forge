@@ -60,14 +60,11 @@ Skill Commands (also available as slash commands in AI tools):
   plan            Create task plan
   execute         Execute tasks
   review          Run code review
-  verify          Run verification gates
+  verify          Run verification gates (safety + phase gate + 4-gate pipeline)
   ship            Commit and archive
   debug           Debug verification failures
-  checkpoint      Save current progress
-  learn           Extract learnings to memory
+  memory          Save progress and extract learnings
   evolve          Evaluate ecosystem changes
-  safety-guard    Safety checks before dangerous operations
-  quality-gate    Quality gate enforcement
 
 Options:
   -h, --help    Show this help
@@ -731,7 +728,7 @@ case "${1:-}" in
   uninstall)  shift; forge_uninstall "$@" ;;
   version)    echo "ForgeTeam v${FORGE_VERSION}" ;;
   verify)     shift; forge_verify "$@" ;;
-  propose|html-prototype|plan|execute|review|ship|debug|checkpoint|learn|evolve|safety-guard|quality-gate)
+  propose|html-prototype|plan|execute|review|ship|debug|memory|evolve)
               forge_skill "$@" ;;
   -h|--help)  usage ;;
   "")         usage ;;

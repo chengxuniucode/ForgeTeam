@@ -44,14 +44,11 @@ On session start, read:
 - /forge-plan — Create execution plan
 - /forge-execute — Run task execution
 - /forge-review — Code review
-- /forge-verify — Quality verification
+- /forge-verify — Quality verification (safety + phase gate + 4-gate pipeline)
 - /forge-ship — Commit and archive
 - /forge-debug — Fix verification failures
-- /forge-checkpoint — Save progress
-- /forge-learn — Extract learnings to memory
+- /forge-memory — Save progress and extract learnings
 - /forge-evolve — Evaluate ecosystem changes and evolution
-- /forge-safety-guard — Safety checks for dangerous operations
-- /forge-quality-gate — Quality gate enforcement
 - /forge-onboard — Rescan project structure
 
 ## Workflow Rules
