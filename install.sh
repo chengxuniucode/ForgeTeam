@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-FORGE_REPO="https://github.com/chengxuninu/ForgeTeam.git"
+FORGE_REPO="https://github.com/chengxuniucode/ForgeTeam.git"
 FORGE_HOME="${FORGE_HOME:-$HOME/.forgeteam}"
 FORGE_BIN="/usr/local/bin/forge"
 
@@ -100,4 +100,4 @@ echo "Quick start:"
 echo "  cd your-project"
 echo "  forge init"
 echo ""
-echo "Documentation: https://github.com/chengxuninu/ForgeTeam"
+echo "Documentation: https://github.com/chengxuniucode/ForgeTeam"

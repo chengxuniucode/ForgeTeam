@@ -284,5 +284,5 @@ git push origin v1.1.0
 
 ## 联系方式
 
-- Issues: [GitHub Issues](https://github.com/chengxuninu/ForgeTeam/issues)
-- Discussions: [GitHub Discussions](https://github.com/chengxuninu/ForgeTeam/discussions)
+- Issues: [GitHub Issues](https://github.com/chengxuniucode/ForgeTeam/issues)
+- Discussions: [GitHub Discussions](https://github.com/chengxuniucode/ForgeTeam/discussions)

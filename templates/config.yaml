@@ -84,7 +84,7 @@ adapters:
 
 # ─── 上游同步 ───
 upstream:
-  repo: "https://github.com/chengxuninu/ForgeTeam.git"
+  repo: "https://github.com/chengxuniucode/ForgeTeam.git"
   branch: "main"
   auto_check: false
   check_interval: "weekly"

@@ -260,7 +260,7 @@ adapters:
   auto_generate: true
 
 upstream:
-  repo: "https://github.com/chengxuninu/ForgeTeam.git"
+  repo: "https://github.com/chengxuniucode/ForgeTeam.git"
   branch: "main"
   auto_check: false
   check_interval: "weekly"
@@ -416,7 +416,7 @@ forge_generate() {
 
 
 forge_sync() {
-  local upstream_repo="https://github.com/chengxuninu/ForgeTeam.git"
+  local upstream_repo="https://github.com/chengxuniucode/ForgeTeam.git"
 
   echo -e "${BLUE}Syncing from upstream...${NC}"
 

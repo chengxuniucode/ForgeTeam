@@ -10,10 +10,10 @@
 
 ```bash
 # 一键安装
-curl -sSL https://raw.githubusercontent.com/chengxuninu/ForgeTeam/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/chengxuniucode/ForgeTeam/main/install.sh | bash
 
 # 或手动安装
-git clone https://github.com/chengxuninu/ForgeTeam.git ~/.forgeteam
+git clone https://github.com/chengxuniucode/ForgeTeam.git ~/.forgeteam
 ln -sf ~/.forgeteam/forge /usr/local/bin/forge
 ```
 
