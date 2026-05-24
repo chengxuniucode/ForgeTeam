@@ -13,10 +13,11 @@
                        │ ForgeTeam 自动判定
                        ▼
          ┌─────────────┴─────────────┐
-         │ 变更规模 < 50 行?          │ → Micro  → execute → verify → done
-         │ 变更规模 50-500 行?        │ → Standard → plan → execute → review → verify → ship
-         │ 变更规模 > 500 行?         │ → Full → propose → plan → execute → review → verify → ship
+         │ 变更规模 < 50 行?          │ → Micro    → execute → verify → done
+         │ 变更规模 50-500 行?        │ → Standard → plan → [html] → execute → review → verify → ship
+         │ 变更规模 > 500 行?         │ → Full     → propose → [html] → plan → execute → review → verify → ship
          └───────────────────────────┘
+         [html] = 涉及 UI/页面变更时插入原型确认，纯后端跳过
 ```
 
 **手动命令的使用场景：**

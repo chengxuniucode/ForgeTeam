@@ -50,8 +50,10 @@ forge init
 | 路由 | 变更规模 | 自动流程 |
 |------|---------|---------|
 | Micro | < 50 行 | execute → verify → done |
-| Standard | 50-500 行 | plan → execute → review → verify → ship |
-| Full | > 500 行 | propose → plan → execute → review → verify → ship |
+| Standard | 50-500 行 | plan → [html] → execute → review → verify → ship |
+| Full | > 500 行 | propose → [html] → plan → execute → review → verify → ship |
+
+> `[html]` 表示涉及 UI/页面变更时自动插入原型确认环节，纯后端变更时跳过。
 
 ### 手动命令（可选）
 
