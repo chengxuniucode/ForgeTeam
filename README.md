@@ -71,7 +71,7 @@ forge init
 | `/forge-debug` | 验证失败后提供指导再继续 |
 | `/forge-checkpoint` | 会话结束前保存进度 |
 
-详细说明见 [Skill 命令详解](USAGE.md)
+详细说明见 [Skill 命令详解](docs/USAGE.md)
 
 ---
 
@@ -178,10 +178,10 @@ forge generate --target opencode   # → AGENTS.md
 
 | 文档 | 内容 |
 |------|------|
-| [USAGE.md](USAGE.md) | Skill 命令详解：流程、示例、断路器 |
+| [USAGE.md](docs/USAGE.md) | Skill 命令详解：流程、示例、断路器 |
 | [extensions/README.md](extensions/README.md) | 扩展分类、目录结构、开发规范 |
-| [ROADMAP.md](ROADMAP.md) | 自进化策略和版本规划 |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | 如何参与贡献 |
+| [ROADMAP.md](docs/ROADMAP.md) | 自进化策略和版本规划 |
+| [CONTRIBUTING.md](docs/CONTRIBUTING.md) | 如何参与贡献 |
 | [evolution/](evolution/) | 进化提案 (EP) |
 
 ---

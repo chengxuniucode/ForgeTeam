@@ -1,3 +1,6 @@
-# Ignore all contents in this directory
+# Ignore private development docs, track project documentation
 *
 !.gitignore
+!USAGE.md
+!ROADMAP.md
+!CONTRIBUTING.md
