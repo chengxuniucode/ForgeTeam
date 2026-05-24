@@ -17,6 +17,11 @@ outputs:
   - memory/preferences.md (更新)
 next: null
 token_budget: 800
+constraints:
+  must:
+    - "去重检查后再写入 memory"
+  should:
+    - "不记录显而易见的事实"
 ---
 
 # Learn Skill

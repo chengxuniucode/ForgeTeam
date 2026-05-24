@@ -16,6 +16,12 @@ outputs:
   - 修复说明
 next: verify (重新验证)
 token_budget: 3000
+constraints:
+  must:
+    - "收集错误信息再修复，不盲目尝试"
+    - "3 次失败触发断路器暂停"
+  should:
+    - "参考 known-issues.md 避免重复踩坑"
 ---
 
 # Debug Skill

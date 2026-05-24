@@ -15,6 +15,11 @@ outputs:
   - 失败详情
 next: ship (if pass) | debug (if fail)
 token_budget: 1000
+constraints:
+  must:
+    - "4 关全部执行（除配置为 SKIP 的条件）"
+    - "任何 gate 失败即报 FAIL"
+  should: []
 ---
 
 # Verify Skill

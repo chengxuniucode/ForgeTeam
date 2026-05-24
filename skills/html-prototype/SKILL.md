@@ -16,6 +16,12 @@ outputs:
   - prototype/{feature}/README.md (原型说明)
 next: plan
 token_budget: 4000
+constraints:
+  must:
+    - "零依赖 HTML 可直接浏览器打开"
+    - "等待用户确认后再进入 plan"
+  should:
+    - "Mock 数据贴近真实业务场景"
 ---
 
 # HTML Prototype Skill

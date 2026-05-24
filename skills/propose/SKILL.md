@@ -14,6 +14,12 @@ outputs:
   - specs/active/{slug}/proposal.md
 next: plan
 token_budget: 2000
+constraints:
+  must:
+    - "生成 proposal.md"
+    - "等待用户确认后再进入 plan"
+  should:
+    - "加载 decisions.md 了解历史决策"
 ---
 
 # Propose Skill

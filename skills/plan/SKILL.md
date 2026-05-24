@@ -16,6 +16,12 @@ outputs:
   - specs/active/{slug}/design.md (if full route)
 next: execute
 token_budget: 3000
+constraints:
+  must:
+    - "生成 tasks.md 含波次和验证条件"
+    - "每个 task 粒度到一次提交能完成"
+  should:
+    - "加载 known-issues.md 规避已知问题"
 ---
 
 # Plan Skill

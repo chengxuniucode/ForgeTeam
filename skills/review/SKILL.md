@@ -15,6 +15,12 @@ outputs:
   - 修改建议列表
 next: verify (if pass) | execute (if needs fix)
 token_budget: 3000
+constraints:
+  must:
+    - "检查安全风险和回归"
+    - "对未通过的评审给出明确修改建议"
+  should:
+    - "检查代码风格一致性"
 ---
 
 # Review Skill

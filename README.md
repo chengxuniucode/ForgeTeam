@@ -30,6 +30,19 @@ forge init
 - 检测语言/框架/构建命令
 - 生成 AI 工具配置文件（CLAUDE.md / .cursor/rules/ 等）
 
+## 工作原理
+
+ForgeTeam 由两层组成：
+
+| 层 | 负责什么 | 执行者 |
+|----|---------|--------|
+| **CLI 层**（`forge` 命令） | 初始化、检测项目、生成配置、同步更新、运行验证 | 用户在终端执行 |
+| **Skill 层**（14 个 SKILL.md） | 需求澄清、任务拆解、代码实现、评审、文档同步 | AI 工具在会话中执行 |
+
+CLI 提供基础设施，Skill 提供行为指南。AI 工具读取 skill 文件作为工作流程指令，用户可随时通过 `forge verify` 独立验证代码质量，不依赖 AI 自称完成。
+
+---
+
 ## 使用方式
 
 **直接用自然语言描述需求，ForgeTeam 自动判定路由并执行。无需记住命令。**
@@ -154,6 +167,7 @@ forge generate --target opencode   # → AGENTS.md
 | `forge status` | 查看当前任务状态 |
 | `forge config` | 查看配置 |
 | `forge version` | 查看版本 |
+| `forge verify` | 运行四关验证（Build→Test→Run→Safety） |
 | `forge uninstall` | 卸载 ForgeTeam |
 
 ---

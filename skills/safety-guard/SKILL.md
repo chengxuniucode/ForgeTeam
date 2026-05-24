@@ -14,6 +14,11 @@ outputs:
   - allow | block | warn
 next: null (inline check)
 token_budget: 100
+constraints:
+  must:
+    - "阻断 hard_blocks 列表中的操作"
+  should:
+    - "记录拦截日志便于审计"
 ---
 
 # Safety Guard Skill

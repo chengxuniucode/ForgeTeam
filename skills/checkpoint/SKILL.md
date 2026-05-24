@@ -14,6 +14,11 @@ outputs:
   - checkpoint commit (可选)
 next: null (会话结束) | resume (下次会话)
 token_budget: 500
+constraints:
+  must:
+    - "保存 state.md 记录当前进度"
+  should:
+    - "保存关键决策到 decisions.md"
 ---
 
 # Checkpoint Skill

@@ -24,3 +24,6 @@ jobs:
 
       - name: Integration test - generate
         run: bash tests/test-generate.sh
+
+      - name: Integration test - verify
+        run: bash tests/test-verify.sh

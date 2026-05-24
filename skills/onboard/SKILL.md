@@ -12,6 +12,11 @@ outputs:
   - .forgeteam/memory/project-map.md
 next: null
 token_budget: 1500
+constraints:
+  must:
+    - "生成 project-map.md"
+  should:
+    - "检测并记录配置文件和构建命令"
 ---
 
 # Onboard Skill

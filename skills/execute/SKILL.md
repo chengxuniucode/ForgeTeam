@@ -16,6 +16,12 @@ outputs:
   - tasks.md 状态更新
 next: review (standard/full) | verify (micro)
 token_budget: 5000-20000
+constraints:
+  must:
+    - "每 task 完成后可编译"
+    - "不跳过任何 task"
+  should:
+    - "文档同步更新"
 ---
 
 # Execute Skill

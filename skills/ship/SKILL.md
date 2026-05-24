@@ -16,6 +16,12 @@ outputs:
   - CHANGELOG 更新 (full route)
 next: learn
 token_budget: 800
+constraints:
+  must:
+    - "验证通过后才提交"
+    - "归档 spec 到 specs/archived/"
+  should:
+    - "更新 changelog"
 ---
 
 # Ship Skill

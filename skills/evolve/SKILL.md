@@ -16,6 +16,11 @@ outputs:
   - evolution-report.md (进化建议报告)
 next: null
 token_budget: 3000
+constraints:
+  must:
+    - "通过进化红线检查（不破坏零依赖、不引入 breaking change）"
+  should:
+    - "产出 EP 文档记录进化决策"
 ---
 
 # Evolve Skill

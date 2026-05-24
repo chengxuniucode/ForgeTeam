@@ -50,6 +50,7 @@ Commands:
   sync          Sync upstream skill updates
   status        Show current task status
   config        View/edit configuration
+  verify        Run verification gates (build → test → run → safety)
   uninstall     Remove ForgeTeam from system
   version       Show version
 
@@ -537,6 +538,148 @@ forge_config() {
   fi
 }
 
+_config_get() {
+  local key="$1"
+  grep "^  ${key}:" .forgeteam/config.yaml 2>/dev/null | head -1 | sed 's/^[^:]*: *//' | tr -d '"'
+}
+
+forge_verify() {
+  if [ ! -f ".forgeteam/config.yaml" ]; then
+    echo -e "${YELLOW}Not initialized. Run: forge init${NC}"
+    exit 1
+  fi
+
+  echo -e "${BLUE}ForgeTeam Verify${NC}"
+  echo "════════════════════════════════"
+
+  local build_cmd test_cmd start_cmd project_type
+  local build_gate test_gate run_gate safety_gate
+  local gates_passed=0 gates_failed=0 gates_skipped=0
+
+  build_cmd=$(_config_get "build")
+  test_cmd=$(_config_get "test")
+  start_cmd=$(_config_get "start")
+  project_type=$(_config_get "type")
+  build_gate=$(_config_get "build_gate")
+  test_gate=$(_config_get "test_gate")
+  run_gate=$(_config_get "run_gate")
+  safety_gate=$(_config_get "safety_gate")
+
+  # ─── Gate 1: Build ───
+  echo ""
+  echo "Gate 1: Build"
+  if [ "$build_gate" = "false" ]; then
+    echo -e "  ${YELLOW}SKIP${NC} (disabled in config)"
+    ((gates_skipped++))
+  elif [ -z "$build_cmd" ]; then
+    echo -e "  ${YELLOW}SKIP${NC} (no build command configured)"
+    ((gates_skipped++))
+  else
+    echo "  Running: $build_cmd"
+    if eval "$build_cmd" > /dev/null 2>&1; then
+      echo -e "  ${GREEN}PASS${NC}"
+      ((gates_passed++))
+    else
+      echo -e "  ${RED}FAIL${NC}"
+      ((gates_failed++))
+    fi
+  fi
+
+  # ─── Gate 2: Test ───
+  echo ""
+  echo "Gate 2: Test"
+  if [ "$test_gate" = "false" ]; then
+    echo -e "  ${YELLOW}SKIP${NC} (disabled in config)"
+    ((gates_skipped++))
+  elif [ -z "$test_cmd" ]; then
+    echo -e "  ${YELLOW}SKIP${NC} (no test command configured)"
+    ((gates_skipped++))
+  else
+    echo "  Running: $test_cmd"
+    if eval "$test_cmd" > /dev/null 2>&1; then
+      echo -e "  ${GREEN}PASS${NC}"
+      ((gates_passed++))
+    else
+      echo -e "  ${RED}FAIL${NC}"
+      ((gates_failed++))
+    fi
+  fi
+
+  # ─── Gate 3: Run ───
+  echo ""
+  echo "Gate 3: Run"
+  if [ "$run_gate" = "false" ]; then
+    echo -e "  ${YELLOW}SKIP${NC} (disabled in config)"
+    ((gates_skipped++))
+  elif [ "$project_type" = "library" ]; then
+    echo -e "  ${YELLOW}SKIP${NC} (library project)"
+    ((gates_skipped++))
+  elif [ -z "$start_cmd" ]; then
+    echo -e "  ${YELLOW}SKIP${NC} (no start command configured)"
+    ((gates_skipped++))
+  else
+    echo "  Running: $start_cmd"
+    eval "$start_cmd" > /dev/null 2>&1 &
+    local pid=$!
+    sleep 5
+    if kill -0 "$pid" 2>/dev/null; then
+      echo -e "  ${GREEN}PASS${NC} (process alive after 5s)"
+      kill "$pid" 2>/dev/null
+      wait "$pid" 2>/dev/null
+      ((gates_passed++))
+    else
+      echo -e "  ${RED}FAIL${NC} (process crashed within 5s)"
+      ((gates_failed++))
+    fi
+  fi
+
+  # ─── Gate 4: Safety ───
+  echo ""
+  echo "Gate 4: Safety"
+  if [ "$safety_gate" = "false" ]; then
+    echo -e "  ${YELLOW}SKIP${NC} (disabled in config)"
+    ((gates_skipped++))
+  else
+    local safety_issues=0
+
+    # Check for leaked secrets
+    if grep -rn -E '(?i)(api[_-]?key|secret|password|token)\s*[:=]\s*['"'"'"][^'"'"'"]{8,}' \
+      --include="*.ts" --include="*.js" --include="*.py" --include="*.java" \
+      --include="*.go" --include="*.rs" --include="*.yaml" --include="*.json" \
+      . 2>/dev/null | grep -v node_modules | grep -v ".forgeteam" | grep -v "package-lock" > /dev/null 2>&1; then
+      echo -e "  ${RED}ISSUE${NC}: potential secrets detected in source"
+      ((safety_issues++))
+    fi
+
+    # Check if .env is tracked by git
+    if git ls-files --error-unmatch .env 2>/dev/null > /dev/null; then
+      echo -e "  ${RED}ISSUE${NC}: .env is tracked by git"
+      ((safety_issues++))
+    fi
+
+    if [ $safety_issues -eq 0 ]; then
+      echo -e "  ${GREEN}PASS${NC}"
+      ((gates_passed++))
+    else
+      echo -e "  ${RED}FAIL${NC} ($safety_issues issue(s))"
+      ((gates_failed++))
+    fi
+  fi
+
+  # ─── Summary ───
+  echo ""
+  echo "════════════════════════════════"
+  echo "Results: ${gates_passed} passed, ${gates_failed} failed, ${gates_skipped} skipped"
+
+  if [ $gates_failed -eq 0 ]; then
+    echo -e "${GREEN}✓ All gates passed${NC}"
+    return 0
+  else
+    echo -e "${RED}✗ Verification failed${NC}"
+    return 1
+  fi
+}
+
 forge_uninstall() {
   echo -e "${YELLOW}This will remove ForgeTeam from your system:${NC}"
   echo "  • $FORGE_HOME (skills, config, upstream cache)"
@@ -587,7 +730,8 @@ case "${1:-}" in
   config)     shift; forge_config "$@" ;;
   uninstall)  shift; forge_uninstall "$@" ;;
   version)    echo "ForgeTeam v${FORGE_VERSION}" ;;
-  propose|html-prototype|plan|execute|review|verify|ship|debug|checkpoint|learn|evolve|safety-guard|quality-gate)
+  verify)     shift; forge_verify "$@" ;;
+  propose|html-prototype|plan|execute|review|ship|debug|checkpoint|learn|evolve|safety-guard|quality-gate)
               forge_skill "$@" ;;
   -h|--help)  usage ;;
   "")         usage ;;

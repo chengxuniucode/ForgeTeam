@@ -15,6 +15,11 @@ outputs:
   - missing_items: []
 next: null (gate check is inline)
 token_budget: 500
+constraints:
+  must:
+    - "阻断不满足前置条件的阶段推进"
+  should:
+    - "输出门禁检查报告"
 ---
 
 # Quality Gate Skill
