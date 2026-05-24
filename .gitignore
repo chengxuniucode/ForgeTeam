@@ -1,0 +1,42 @@
+/target
+.DS_Store
+*.pyc
+__pycache__/
+company-skills/skills/
+规范合集/
+docs/artifacts/leader-briefing/node_modules/
+crates/*/target/
+crates/*/target-local-musl/
+crates/*/.cargo/
+bin/prebuilt/
+*.tgz
+
+# Sensitive local config
+.npmrc
+.claude/settings.local.json
+.claude/**/*.local.*
+*.local.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+.cursor/
+
+# Plugin local state
+.claude-plugin/
+.cursor-plugin/
+
+# Private development docs (not committed)
+docs/
+
+# Dependencies and build outputs
+node_modules/
+dist/

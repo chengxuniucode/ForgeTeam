@@ -1,0 +1,598 @@
+#!/bin/bash
+# ForgeTeam CLI — 主入口
+# 用法: forge <command> [options]
+
+set -euo pipefail
+
+FORGE_VERSION="1.0.0"
+FORGE_HOME="${FORGE_HOME:-$HOME/.forgeteam}"
+FORGE_SKILLS="$FORGE_HOME/skills"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+usage() {
+  cat <<EOF
+ForgeTeam v${FORGE_VERSION} — One person, full team delivery.
+
+Usage: forge <command> [options]
+
+Commands:
+  init          Initialize ForgeTeam in current project
+  onboard       Scan project and generate project map
+  generate      Generate platform-specific files
+  sync          Sync upstream skill updates
+  status        Show current task status
+  config        View/edit configuration
+  version       Show version
+
+Skill Commands (also available as slash commands):
+  propose       Start a new proposal (full route)
+  plan          Create task plan
+  execute       Execute tasks
+  review        Run code review
+  verify        Run verification gates
+  ship          Commit and archive
+  debug         Debug verification failures
+  checkpoint    Save current progress
+  learn         Extract learnings to memory
+
+Options:
+  -h, --help    Show this help
+  -v, --verbose Verbose output
+  --dry-run     Show what would happen without doing it
+
+EOF
+}
+
+forge_detect_project() {
+  local lang="unknown"
+  local framework=""
+  local type="web-app"
+  local build_cmd=""
+  local test_cmd=""
+  local start_cmd=""
+
+  if [ -f "package.json" ]; then
+    lang="typescript"
+    build_cmd="npm run build"
+    test_cmd="npm test"
+    start_cmd="npm start"
+    if grep -q '"next"' package.json 2>/dev/null; then
+      framework="next"
+    elif grep -q '"react"' package.json 2>/dev/null; then
+      framework="react"
+    elif grep -q '"vue"' package.json 2>/dev/null; then
+      framework="vue"
+    elif grep -q '"express"' package.json 2>/dev/null; then
+      framework="express"
+    fi
+  elif [ -f "pom.xml" ]; then
+    lang="java"
+    framework="spring"
+    build_cmd="mvn compile"
+    test_cmd="mvn test"
+    start_cmd="mvn spring-boot:run"
+  elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+    lang="java"
+    framework="spring"
+    build_cmd="./gradlew build"
+    test_cmd="./gradlew test"
+    start_cmd="./gradlew bootRun"
+  elif [ -f "go.mod" ]; then
+    lang="go"
+    build_cmd="go build ./..."
+    test_cmd="go test ./..."
+    start_cmd="go run ."
+  elif [ -f "Cargo.toml" ]; then
+    lang="rust"
+    build_cmd="cargo build"
+    test_cmd="cargo test"
+    start_cmd="cargo run"
+  elif [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
+    lang="python"
+    test_cmd="pytest"
+    if [ -f "manage.py" ]; then
+      framework="django"
+      start_cmd="python manage.py runserver"
+    elif grep -qi "fastapi" requirements.txt 2>/dev/null || grep -q '"fastapi"' pyproject.toml 2>/dev/null; then
+      framework="fastapi"
+      start_cmd="uvicorn main:app"
+    fi
+  fi
+
+  if [ -f "package.json" ] && grep -q '"main"' package.json 2>/dev/null && ! grep -q '"next"' package.json 2>/dev/null; then
+    type="library"
+  fi
+
+  cat <<YAML
+version: "1.0"
+
+project:
+  name: "$(basename "$(pwd)")"
+  type: "${type}"
+  language: "${lang}"
+  framework: "${framework}"
+
+routing:
+  micro_threshold: 50
+  standard_threshold: 500
+  default_route: "auto"
+
+verification:
+  build_gate: true
+  test_gate: true
+  run_gate: $([ "$type" = "library" ] && echo "false" || echo "true")
+  safety_gate: true
+  coverage_threshold: 80
+  circuit_breaker_limit: 3
+
+commands:
+  build: "${build_cmd}"
+  test: "${test_cmd}"
+  start: "${start_cmd}"
+  lint: ""
+
+memory:
+  auto_update: true
+  track_decisions: true
+  track_issues: true
+
+extensions:
+  skills: []
+  mcp_servers: []
+
+adapters:
+  target: "claude"
+YAML
+}
+
+forge_init() {
+  local project_dir
+  project_dir=$(pwd)
+
+  echo -e "${BLUE}ForgeTeam Init${NC}"
+  echo "Project: $project_dir"
+  echo ""
+
+  if [ -d ".forgeteam" ]; then
+    echo -e "${YELLOW}Warning: .forgeteam already exists${NC}"
+    read -p "Reinitialize? [y/N] " confirm
+    [ "$confirm" != "y" ] && exit 0
+  fi
+
+  echo "Creating .forgeteam/..."
+  mkdir -p .forgeteam/memory
+  mkdir -p .forgeteam/extensions/skills
+  mkdir -p .forgeteam/extensions/templates
+  mkdir -p specs/active
+  mkdir -p specs/archived
+
+  echo "Generating config.yaml..."
+  forge_detect_project > .forgeteam/config.yaml
+
+  if ! grep -q ".forgeteam/safety.log" .gitignore 2>/dev/null; then
+    echo "" >> .gitignore
+    echo "# ForgeTeam" >> .gitignore
+    echo ".forgeteam/safety.log" >> .gitignore
+    echo ".forgeteam/gates.log" >> .gitignore
+  fi
+
+  echo ""
+  echo "Running onboard..."
+  forge_onboard
+
+  echo ""
+  echo "Generating platform files..."
+  local target
+  target=$(grep "target:" .forgeteam/config.yaml 2>/dev/null | awk '{print $2}' | tr -d '"')
+  forge_generate --target "${target:-claude}"
+
+  echo ""
+  echo -e "${GREEN}✓ ForgeTeam initialized successfully!${NC}"
+  echo ""
+  echo "Next steps:"
+  echo "  1. Review .forgeteam/config.yaml"
+  echo "  2. Review .forgeteam/memory/project-map.md"
+  echo "  3. Start working: describe what you want to build"
+}
+
+forge_onboard() {
+  echo -e "${BLUE}Onboard: Scanning project...${NC}"
+
+  local name lang framework version build_cmd test_cmd start_cmd dev_cmd
+  name=$(basename "$(pwd)")
+  lang="unknown"
+  framework=""
+  version=""
+  build_cmd=""
+  test_cmd=""
+  start_cmd=""
+  dev_cmd=""
+
+  if [ -f "package.json" ]; then
+    lang="typescript/javascript"
+    name=$(grep '"name"' package.json 2>/dev/null | head -1 | sed 's/.*: *"\(.*\)".*/\1/' || echo "$name")
+    version=$(grep '"version"' package.json 2>/dev/null | head -1 | sed 's/.*: *"\(.*\)".*/\1/' || echo "")
+    build_cmd="npm run build"
+    test_cmd="npm test"
+    start_cmd="npm start"
+    dev_cmd="npm run dev"
+    if grep -q '"next"' package.json 2>/dev/null; then framework="Next.js"
+    elif grep -q '"react"' package.json 2>/dev/null; then framework="React"
+    elif grep -q '"vue"' package.json 2>/dev/null; then framework="Vue"
+    elif grep -q '"express"' package.json 2>/dev/null; then framework="Express"
+    fi
+  elif [ -f "pom.xml" ]; then
+    lang="java"
+    framework="Spring Boot"
+    build_cmd="mvn compile"
+    test_cmd="mvn test"
+    start_cmd="mvn spring-boot:run"
+  elif [ -f "go.mod" ]; then
+    lang="go"
+    build_cmd="go build ./..."
+    test_cmd="go test ./..."
+    start_cmd="go run ."
+  elif [ -f "Cargo.toml" ]; then
+    lang="rust"
+    build_cmd="cargo build"
+    test_cmd="cargo test"
+    start_cmd="cargo run"
+  elif [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
+    lang="python"
+    test_cmd="pytest"
+    if [ -f "manage.py" ]; then
+      framework="Django"
+      start_cmd="python manage.py runserver"
+    fi
+  fi
+
+  local tree_output
+  tree_output=$(find . -maxdepth 2 -type d \
+    ! -path "*/node_modules*" \
+    ! -path "*/.git*" \
+    ! -path "*/dist*" \
+    ! -path "*/build*" \
+    ! -path "*/target*" \
+    ! -path "*/__pycache__*" \
+    ! -path "*/vendor*" \
+    ! -path "*/.forgeteam*" \
+    2>/dev/null | sort | head -40)
+
+  mkdir -p .forgeteam/memory
+
+  cat > .forgeteam/memory/project-map.md <<EOF
+# Project Map
+
+## 基础信息
+- 名称: ${name}
+- 类型: app
+- 语言: ${lang}
+- 框架: ${framework}
+- 版本: ${version}
+
+## 构建与运行
+- 包管理: $([ -f "package-lock.json" ] && echo "npm" || ([ -f "yarn.lock" ] && echo "yarn" || ([ -f "pnpm-lock.yaml" ] && echo "pnpm" || echo "unknown")))
+- 构建命令: ${build_cmd}
+- 测试命令: ${test_cmd}
+- 启动命令: ${start_cmd}
+- 开发命令: ${dev_cmd}
+
+## 目录结构
+${tree_output}
+
+## 关键文件
+- 入口: $([ -f "src/index.ts" ] && echo "src/index.ts" || ([ -f "src/main.ts" ] && echo "src/main.ts" || ([ -f "index.js" ] && echo "index.js" || echo "unknown")))
+- 配置: $(ls *.config.* .env.example tsconfig.json 2>/dev/null | tr '\n' ', ' || echo "none detected")
+- 测试: $([ -d "tests" ] && echo "tests/" || ([ -d "test" ] && echo "test/" || ([ -d "__tests__" ] && echo "__tests__/" || echo "none detected")))
+
+## 备注
+- 生成时间: $(date -Iseconds)
+- 最后更新: $(date -Iseconds)
+EOF
+
+  echo -e "  ${GREEN}✓${NC} project-map.md generated"
+}
+
+forge_generate() {
+  local target="claude"
+
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --target) target="$2"; shift 2 ;;
+      *) echo "Unknown option: $1"; exit 1 ;;
+    esac
+  done
+
+  echo -e "${BLUE}Generating for: ${target}${NC}"
+
+  case "$target" in
+    claude)  generate_claude ;;
+    cursor)  generate_cursor ;;
+    codex)   generate_codex ;;
+    opencode) generate_opencode ;;
+    *) echo "Unknown target: $target"; exit 1 ;;
+  esac
+
+  echo -e "${GREEN}✓ Generated ${target} configuration${NC}"
+}
+
+generate_claude() {
+  mkdir -p .claude/commands
+
+  cat > CLAUDE.md <<'CLAUDEEOF'
+# ForgeTeam
+
+This project uses ForgeTeam for AI-assisted development.
+
+## Auto-Loaded Context
+
+On session start, read:
+- .forgeteam/memory/project-map.md
+- .forgeteam/memory/state.md
+- .forgeteam/memory/preferences.md
+- .forgeteam/config.yaml
+
+## Available Commands
+
+- /forge-propose — Start a new feature proposal
+- /forge-plan — Create execution plan
+- /forge-execute — Run task execution
+- /forge-review — Code review
+- /forge-verify — Quality verification
+- /forge-ship — Commit and archive
+- /forge-debug — Fix verification failures
+- /forge-checkpoint — Save progress
+- /forge-status — Show current state
+
+## Workflow Rules
+
+1. Auto-detect route level (micro/standard/full) based on change scope
+2. Follow skill instructions exactly
+3. Update state.md after each significant action
+4. Never skip verification gates
+5. Pause and ask human after 3 failed fix attempts
+
+## Route Detection
+
+- Micro (< 50 lines, <= 3 files, no API/DB change): execute → verify → done
+- Standard (50-500 lines, <= 10 files): plan → execute → review → verify → ship
+- Full (> 500 lines, multi-module): propose → plan → execute → review → verify → ship
+
+CLAUDEEOF
+
+  for skill in propose html-prototype plan execute review verify ship debug checkpoint learn evolve safety-guard quality-gate; do
+    cat > ".claude/commands/forge-${skill}.md" <<EOF
+# forge ${skill}
+
+Execute the ForgeTeam ${skill} skill.
+
+Read and follow the instructions in the ForgeTeam ${skill} skill file at:
+\`\$HOME/.forgeteam/skills/${skill}/SKILL.md\`
+
+Context to load before execution:
+- .forgeteam/config.yaml
+- .forgeteam/memory/state.md
+- .forgeteam/memory/project-map.md
+- .forgeteam/memory/preferences.md
+- specs/active/ (if exists)
+EOF
+  done
+}
+
+generate_cursor() {
+  mkdir -p .cursor/rules
+
+  cat > .cursor/rules/forgeteam.mdc <<'EOF'
+---
+description: ForgeTeam AI Development Framework
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# ForgeTeam Rules for Cursor
+
+## Session Start
+Load context from .forgeteam/memory/ and .forgeteam/config.yaml
+
+## Workflow
+1. Auto-detect route: micro (<50 lines) / standard / full (>500 lines)
+2. Follow skill-specific instructions
+3. Verify before shipping: Build → Test → Run → Safety
+4. Update .forgeteam/memory/state.md after actions
+
+## Key Files
+- .forgeteam/config.yaml — Project configuration
+- .forgeteam/memory/state.md — Current state
+- specs/active/ — Active specifications
+- specs/archived/ — Completed specs
+
+EOF
+}
+
+generate_codex() {
+  cat > codex.md <<'EOF'
+# ForgeTeam
+
+## Instructions
+
+This project uses ForgeTeam workflow. Follow these rules:
+
+1. Read .forgeteam/config.yaml for project settings
+2. Read .forgeteam/memory/state.md for current progress
+3. Auto-detect route level based on change scope
+4. Execute skills in order: propose → plan → execute → review → verify → ship
+5. Never skip verification (build + test + run + safety)
+6. Update state.md after significant actions
+7. Pause after 3 failed fix attempts
+
+## Skill Locations
+Skills are in ~/.forgeteam/skills/{name}/SKILL.md
+
+EOF
+}
+
+generate_opencode() {
+  cat > AGENTS.md <<'EOF'
+# ForgeTeam
+
+## Context
+- Config: .forgeteam/config.yaml
+- State: .forgeteam/memory/state.md
+- Memory: .forgeteam/memory/
+
+## Workflow
+Auto-detect route → execute skills → verify → ship
+
+## Verification Gates
+1. Build Gate: compile/transpile must succeed
+2. Test Gate: all tests pass, coverage >= threshold
+3. Run Gate: service starts and responds
+4. Safety Gate: no secrets, no dangerous ops
+
+EOF
+}
+
+forge_sync() {
+  local upstream_repo="https://github.com/chengxuninu/ForgeTeam.git"
+
+  echo -e "${BLUE}Syncing from upstream...${NC}"
+
+  if [ -d "$FORGE_HOME/.upstream" ]; then
+    echo "Pulling latest..."
+    git -C "$FORGE_HOME/.upstream" pull --ff-only 2>/dev/null || true
+  else
+    echo "Cloning upstream..."
+    git clone --depth 1 "$upstream_repo" "$FORGE_HOME/.upstream"
+  fi
+
+  local remote_version local_version
+  remote_version=$(cat "$FORGE_HOME/.upstream/skills/version.txt" 2>/dev/null || echo "0.0.0")
+  local_version=$(cat "$FORGE_SKILLS/version.txt" 2>/dev/null || echo "0.0.0")
+
+  echo "Local: v${local_version}"
+  echo "Remote: v${remote_version}"
+
+  if [ "$local_version" = "$remote_version" ]; then
+    echo -e "${GREEN}Already up to date.${NC}"
+    return 0
+  fi
+
+  echo "Updating skills..."
+  for skill_dir in "$FORGE_HOME/.upstream/skills"/*/; do
+    local skill_name
+    skill_name=$(basename "$skill_dir")
+    local target_dir="$FORGE_SKILLS/$skill_name"
+
+    if [ -d "$target_dir" ] && [ -f "$target_dir/.local-modified" ]; then
+      echo -e "  ${YELLOW}SKIP${NC} $skill_name (locally modified)"
+      continue
+    fi
+
+    echo -e "  ${GREEN}UPDATE${NC} $skill_name"
+    cp -r "$skill_dir" "$target_dir"
+  done
+
+  echo "$remote_version" > "$FORGE_SKILLS/version.txt"
+
+  if [ -f ".forgeteam/config.yaml" ]; then
+    echo ""
+    echo "Regenerating platform files..."
+    local target
+    target=$(grep "target:" .forgeteam/config.yaml | awk '{print $2}' | tr -d '"')
+    forge_generate --target "${target:-claude}"
+  fi
+
+  echo ""
+  echo -e "${GREEN}✓ Synced to v${remote_version}${NC}"
+}
+
+forge_status() {
+  echo -e "${BLUE}ForgeTeam Status${NC}"
+  echo "────────────────────────"
+
+  if [ -f ".forgeteam/config.yaml" ]; then
+    local name lang
+    name=$(grep "name:" .forgeteam/config.yaml | head -1 | awk '{print $2}' | tr -d '"')
+    lang=$(grep "language:" .forgeteam/config.yaml | awk '{print $2}' | tr -d '"')
+    echo "Project: $name ($lang)"
+  else
+    echo -e "${YELLOW}Not initialized. Run: forge init${NC}"
+    return 1
+  fi
+
+  echo ""
+
+  if [ -f ".forgeteam/memory/state.md" ]; then
+    echo "Current State:"
+    grep "^- " .forgeteam/memory/state.md 2>/dev/null | head -6 | while read -r line; do
+      echo "  $line"
+    done
+  else
+    echo "State: idle (no active task)"
+  fi
+
+  echo ""
+
+  if [ -d "specs/active" ]; then
+    local active_count
+    active_count=$(ls specs/active/ 2>/dev/null | wc -l | tr -d ' ')
+    echo "Active Specs: $active_count"
+    ls specs/active/ 2>/dev/null | while read -r spec; do
+      local tasks_total tasks_done
+      tasks_total=$(grep -c "^\- \[" "specs/active/$spec/tasks.md" 2>/dev/null || echo "0")
+      tasks_done=$(grep -c "^\- \[x\]" "specs/active/$spec/tasks.md" 2>/dev/null || echo "0")
+      echo "  • $spec ($tasks_done/$tasks_total)"
+    done
+  fi
+
+  echo ""
+
+  if [ -d "specs/archived" ]; then
+    local archived_count
+    archived_count=$(ls specs/archived/ 2>/dev/null | wc -l | tr -d ' ')
+    echo "Archived Specs: $archived_count"
+  fi
+}
+
+forge_config() {
+  if [ -f ".forgeteam/config.yaml" ]; then
+    cat .forgeteam/config.yaml
+  else
+    echo -e "${YELLOW}Not initialized. Run: forge init${NC}"
+    exit 1
+  fi
+}
+
+forge_skill() {
+  local skill_name=$1
+  echo -e "${BLUE}ForgeTeam: ${skill_name}${NC}"
+  echo ""
+  echo "This skill is designed to be executed by AI coding assistants."
+  echo ""
+  echo "Usage options:"
+  echo "  • In Claude Code: use /forge-${skill_name}"
+  echo "  • In Cursor: AI will auto-detect based on context"
+  echo "  • Manual: read skills/${skill_name}/SKILL.md for instructions"
+  echo ""
+  echo "Skill file: \$HOME/.forgeteam/skills/${skill_name}/SKILL.md"
+}
+
+case "${1:-}" in
+  init)       shift; forge_init "$@" ;;
+  onboard)    shift; forge_onboard "$@" ;;
+  generate)   shift; forge_generate "$@" ;;
+  sync)       shift; forge_sync "$@" ;;
+  status)     shift; forge_status "$@" ;;
+  config)     shift; forge_config "$@" ;;
+  version)    echo "ForgeTeam v${FORGE_VERSION}" ;;
+  propose|html-prototype|plan|execute|review|verify|ship|debug|checkpoint|learn|evolve|safety-guard|quality-gate)
+              forge_skill "$@" ;;
+  -h|--help)  usage ;;
+  "")         usage ;;
+  *)          usage; exit 1 ;;
+esac

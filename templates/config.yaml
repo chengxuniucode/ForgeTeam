@@ -1,0 +1,91 @@
+version: "1.0"
+
+# ─── 项目基础 ───
+project:
+  name: "my-project"
+  type: "web-app"          # web-app | api | library | cli | monorepo
+  language: "typescript"    # 自动检测，可覆盖
+  framework: ""             # 自动检测，可覆盖
+  description: ""
+
+# ─── 路由配置 ───
+routing:
+  micro_threshold: 50       # < 此行数 → micro route
+  standard_threshold: 500   # < 此行数 → standard route
+  default_route: "auto"     # auto | micro | standard | full
+  force_full_on:
+    - "database migration"
+    - "new api endpoint"
+    - "architecture change"
+
+# ─── 验证配置 ───
+verification:
+  build_gate: true
+  test_gate: true
+  run_gate: true            # false for libraries
+  safety_gate: true
+  coverage_threshold: 80    # 新代码覆盖率要求 (%)
+  circuit_breaker_limit: 3
+  test_gate_mode: "warn"    # strict | warn (无测试时)
+
+# ─── 命令配置 ───
+commands:
+  build: ""
+  test: ""
+  start: ""
+  dev: ""
+  lint: ""
+  format: ""
+  health_url: ""
+
+# ─── 记忆配置 ───
+memory:
+  auto_update: true
+  track_decisions: true
+  track_issues: true
+  max_known_issues: 50
+  max_decisions: 100
+
+# ─── 安全配置 ───
+safety:
+  level: "standard"         # paranoid | standard | relaxed
+  allow_force_push: false
+  secret_scan: true
+  protected_branches:
+    - "main"
+    - "master"
+  custom_blocks: []
+  custom_allows: []
+
+# ─── 评审配置 ───
+review:
+  strict_mode: false
+  security_check: true
+  performance_check: true
+  style_check: true
+  max_review_rounds: 3
+
+# ─── 质量门禁 ───
+quality_gates:
+  strict: false
+  allow_skip: true
+  skip_log: true
+
+# ─── 企业扩展 ───
+extensions:
+  skills: []
+  mcp_servers: []
+  templates: []
+
+# ─── 平台适配 ───
+adapters:
+  target: "claude"          # claude | cursor | codex | opencode
+  auto_generate: true
+
+# ─── 上游同步 ───
+upstream:
+  repo: "https://github.com/chengxuninu/ForgeTeam.git"
+  branch: "main"
+  auto_check: false
+  check_interval: "weekly"
+  preserve_local: true
