@@ -154,6 +154,7 @@ forge generate --target opencode   # → AGENTS.md
 | `forge status` | 查看当前任务状态 |
 | `forge config` | 查看配置 |
 | `forge version` | 查看版本 |
+| `forge uninstall` | 卸载 ForgeTeam |
 
 ---
 
