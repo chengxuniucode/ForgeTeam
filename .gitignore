@@ -34,8 +34,8 @@ bin/prebuilt/
 .claude-plugin/
 .cursor-plugin/
 
-# Private development docs (not committed)
-docs/
+# Private development docs (contents ignored via docs/.gitignore)
+
 
 # Dependencies and build outputs
 node_modules/
