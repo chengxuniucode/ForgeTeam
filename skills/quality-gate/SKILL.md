@@ -4,7 +4,7 @@ version: "1.0.0"
 description: "阶段切换时的质量门禁检查"
 triggers:
   - auto: "before phase transition"
-  - command: "/gate-check"
+  - command: "/forge-quality-gate"
 route_level: [standard, full]
 inputs:
   - 当前阶段完成状态

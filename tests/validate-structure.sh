@@ -7,10 +7,15 @@ set -euo pipefail
 errors=0
 warnings=0
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+# Color support
+if [ -t 1 ]; then
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[1;33m'
+  NC='\033[0m'
+else
+  RED='' GREEN='' YELLOW='' NC=''
+fi
 
 check_file() {
   if [ ! -f "$1" ]; then
@@ -27,6 +32,64 @@ check_dir() {
     ((errors++))
   else
     echo -e "  ${GREEN}✓${NC} $1/"
+  fi
+}
+
+# Validate SKILL.md frontmatter fields
+check_skill_format() {
+  local skill_file="$1"
+  local skill_name
+  skill_name=$(basename "$(dirname "$skill_file")")
+  local has_error=false
+
+  if ! head -1 "$skill_file" | grep -q "^---"; then
+    echo -e "  ${RED}INVALID${NC}: $skill_file missing frontmatter"
+    ((errors++))
+    return
+  fi
+
+  for field in name version description triggers; do
+    if ! grep -q "^${field}:" "$skill_file"; then
+      echo -e "  ${RED}INVALID${NC}: $skill_name missing '${field}' field"
+      ((errors++))
+      has_error=true
+    fi
+  done
+
+  if [ "$has_error" = false ]; then
+    echo -e "  ${GREEN}✓${NC} $skill_name: valid format"
+  fi
+}
+
+# Validate extension SKILL.md (requires additional 'type' field)
+check_extension_format() {
+  local skill_file="$1"
+  local ext_path
+  ext_path=$(echo "$skill_file" | sed 's|extensions/||;s|/SKILL.md||')
+  local has_error=false
+
+  if ! head -1 "$skill_file" | grep -q "^---"; then
+    echo -e "  ${RED}INVALID${NC}: $skill_file missing frontmatter"
+    ((errors++))
+    return
+  fi
+
+  for field in name version description type triggers; do
+    if ! grep -q "^${field}:" "$skill_file"; then
+      echo -e "  ${RED}INVALID${NC}: ${ext_path} missing '${field}' field"
+      ((errors++))
+      has_error=true
+    fi
+  done
+
+  # Check type is 'extension'
+  if grep -q "^type:" "$skill_file" && ! grep -q 'type: extension' "$skill_file"; then
+    echo -e "  ${YELLOW}WARN${NC}: ${ext_path} type is not 'extension'"
+    ((warnings++))
+  fi
+
+  if [ "$has_error" = false ]; then
+    echo -e "  ${GREEN}✓${NC} ${ext_path}: valid format"
   fi
 }
 
@@ -85,25 +148,8 @@ echo ""
 # ─── Skill Format Validation ───
 echo "Skill Format:"
 for skill_file in skills/*/SKILL.md; do
-  skill_name=$(basename "$(dirname "$skill_file")")
-
-  # Check frontmatter exists
-  if ! head -1 "$skill_file" | grep -q "^---"; then
-    echo -e "  ${RED}INVALID${NC}: $skill_file missing frontmatter"
-    ((errors++))
-    continue
-  fi
-
-  # Check required fields
-  if ! grep -q "^name:" "$skill_file"; then
-    echo -e "  ${RED}INVALID${NC}: $skill_file missing 'name' field"
-    ((errors++))
-  elif ! grep -q "^description:" "$skill_file"; then
-    echo -e "  ${RED}INVALID${NC}: $skill_file missing 'description' field"
-    ((errors++))
-  else
-    echo -e "  ${GREEN}✓${NC} $skill_name: valid format"
-  fi
+  [ -f "$skill_file" ] || continue
+  check_skill_format "$skill_file"
 done
 echo ""
 
@@ -132,10 +178,29 @@ check_file "hooks/pre-tool-safety.md"
 echo ""
 
 # ─── Extensions ───
-echo "Extension Examples:"
-check_file "extensions/auth/sso/SKILL.md"
-check_file "extensions/auth/rbac/SKILL.md"
-check_file "extensions/ui/theme/SKILL.md"
+echo "Extensions:"
+required_extensions=(
+  "extensions/auth/sso/SKILL.md"
+  "extensions/auth/rbac/SKILL.md"
+  "extensions/ui/theme/SKILL.md"
+  "extensions/deploy/k8s/SKILL.md"
+  "extensions/data/migration/SKILL.md"
+  "extensions/integration/mq/SKILL.md"
+  "extensions/monitoring/logging/SKILL.md"
+  "extensions/testing/e2e/SKILL.md"
+)
+
+for ext in "${required_extensions[@]}"; do
+  check_file "$ext"
+done
+echo ""
+
+# ─── Extension Format Validation ───
+echo "Extension Format:"
+for ext_file in extensions/*/*/SKILL.md; do
+  [ -f "$ext_file" ] || continue
+  check_extension_format "$ext_file"
+done
 echo ""
 
 # ─── Documentation ───
@@ -153,6 +218,22 @@ echo ""
 # ─── Version ───
 echo "Version:"
 check_file "skills/version.txt"
+echo ""
+
+# ─── Syntax Check ───
+echo "Syntax:"
+if bash -n forge 2>/dev/null; then
+  echo -e "  ${GREEN}✓${NC} forge: valid bash syntax"
+else
+  echo -e "  ${RED}INVALID${NC}: forge has syntax errors"
+  ((errors++))
+fi
+if bash -n install.sh 2>/dev/null; then
+  echo -e "  ${GREEN}✓${NC} install.sh: valid bash syntax"
+else
+  echo -e "  ${RED}INVALID${NC}: install.sh has syntax errors"
+  ((errors++))
+fi
 echo ""
 
 # ─── Summary ───

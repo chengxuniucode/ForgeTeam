@@ -1,5 +1,5 @@
 ---
-name: rbac
+name: auth-rbac
 version: "1.0.0"
 description: "基于角色的访问控制集成"
 type: extension

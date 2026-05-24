@@ -117,9 +117,9 @@ git clone https://github.com/your-org/forge-skills.git .forgeteam/extensions/ski
 # 在 config.yaml 中按需启用
 ```
 
-### MCP Server 集成
+### MCP Server 集成（规划中）
 
-配置 `.forgeteam/extensions/mcp.json` 连接公司内部 API、Jira 等外部系统。
+通过 `config.yaml` 的 `extensions.mcp_servers` 字段配置外部系统连接（公司 API、Jira 等）。
 
 详细说明见 [extensions/README.md](extensions/README.md)
 
