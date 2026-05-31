@@ -166,6 +166,12 @@ check_file "adapters/claude.sh"
 check_file "adapters/cursor.sh"
 check_file "adapters/codex.sh"
 check_file "adapters/opencode.sh"
+check_file "adapters/windsurf.sh"
+echo ""
+
+# ─── Registry ───
+echo "Registry:"
+check_file "registry/official.yaml"
 echo ""
 
 # ─── Hooks ───
@@ -198,6 +204,15 @@ for ext_file in extensions/*/*/SKILL.md; do
   [ -f "$ext_file" ] || continue
   check_extension_format "$ext_file"
 done
+echo ""
+
+# ─── Tests ───
+echo "Tests:"
+check_file "tests/validate-structure.sh"
+check_file "tests/test-init.sh"
+check_file "tests/test-verify.sh"
+check_file "tests/test-generate.sh"
+check_file "tests/test-doctor.sh"
 echo ""
 
 # ─── Documentation ───

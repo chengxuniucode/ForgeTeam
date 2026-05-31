@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-FORGE_VERSION="1.0.0"
+FORGE_VERSION="1.1.0"
 FORGE_HOME="${FORGE_HOME:-$HOME/.forgeteam}"
 FORGE_SKILLS="$FORGE_HOME/skills"
 
@@ -51,6 +51,10 @@ Commands:
   status        Show current task status
   config        View/edit configuration
   verify        Run verification gates (build → test → run → safety)
+  doctor        Check configuration health and diagnose issues
+  add           Install an extension (git url, local path, or registry name)
+  remove        Uninstall an extension
+  ep            Manage Evolution Proposals (create/list/status)
   uninstall     Remove ForgeTeam from system
   version       Show version
 
@@ -677,6 +681,922 @@ forge_verify() {
   fi
 }
 
+forge_doctor() {
+  echo -e "${BLUE}ForgeTeam Doctor${NC}"
+  echo "════════════════════════════════"
+
+  local checks_pass=0 checks_warn=0 checks_fail=0
+
+  # ─── Check 1: config.yaml structure ───
+  echo ""
+  echo "Check 1: Configuration"
+
+  if [ ! -f ".forgeteam/config.yaml" ]; then
+    echo -e "  ${RED}✗${NC} .forgeteam/config.yaml not found"
+    echo "    Fix: run 'forge init' to initialize project"
+    ((checks_fail++))
+  else
+    local config_ok=true
+
+    # Required top-level keys
+    local required_keys=("project:" "routing:" "verification:" "commands:" "safety:")
+    for key in "${required_keys[@]}"; do
+      if ! grep -q "^${key}" .forgeteam/config.yaml 2>/dev/null; then
+        echo -e "  ${RED}✗${NC} Missing section: ${key%:}"
+        echo "    Fix: run 'forge init' to regenerate config"
+        config_ok=false
+        ((checks_fail++))
+      fi
+    done
+
+    # Required project fields
+    local project_fields=("name:" "language:" "type:")
+    for field in "${project_fields[@]}"; do
+      if ! grep -q "^  ${field}" .forgeteam/config.yaml 2>/dev/null; then
+        echo -e "  ${YELLOW}⚠${NC}  Missing project.${field%:}"
+        echo "    Fix: add '  ${field} <value>' under project: section"
+        config_ok=false
+        ((checks_warn++))
+      fi
+    done
+
+    # Check language value is recognized
+    local lang_val
+    lang_val=$(grep "^  language:" .forgeteam/config.yaml 2>/dev/null | head -1 | sed 's/^[^:]*: *//' | tr -d '"')
+    if [ -n "$lang_val" ] && [[ ! "$lang_val" =~ ^(typescript|java|go|rust|python|unknown)$ ]]; then
+      echo -e "  ${YELLOW}⚠${NC}  Unrecognized language: $lang_val"
+      echo "    Supported: typescript, java, go, rust, python"
+      ((checks_warn++))
+      config_ok=false
+    fi
+
+    if [ "$config_ok" = true ]; then
+      echo -e "  ${GREEN}✓${NC} config.yaml is valid"
+      ((checks_pass++))
+    fi
+  fi
+
+  # ─── Check 2: Skills directory ───
+  echo ""
+  echo "Check 2: Skills"
+
+  if [ ! -d "$FORGE_SKILLS" ]; then
+    echo -e "  ${RED}✗${NC} Skills directory not found: $FORGE_SKILLS"
+    echo "    Fix: run 'forge sync' to install skills"
+    ((checks_fail++))
+  else
+    local skills_ok=true
+    local core_skills=("plan" "execute" "verify" "ship" "debug" "review" "propose" "onboard" "memory" "evolve")
+    local missing_skills=()
+
+    for skill in "${core_skills[@]}"; do
+      if [ ! -f "$FORGE_SKILLS/$skill/SKILL.md" ]; then
+        missing_skills+=("$skill")
+      fi
+    done
+
+    if [ ${#missing_skills[@]} -gt 0 ]; then
+      echo -e "  ${RED}✗${NC} Missing skills: ${missing_skills[*]}"
+      echo "    Fix: run 'forge sync' to restore missing skills"
+      ((checks_fail++))
+      skills_ok=false
+    fi
+
+    # Validate SKILL.md frontmatter
+    local invalid_skills=()
+    for skill_file in "$FORGE_SKILLS"/*/SKILL.md; do
+      [ -f "$skill_file" ] || continue
+      if ! head -1 "$skill_file" | grep -q "^---$"; then
+        invalid_skills+=("$(basename "$(dirname "$skill_file")")")
+      elif ! grep -q "^name:" "$skill_file"; then
+        invalid_skills+=("$(basename "$(dirname "$skill_file")")")
+      fi
+    done
+
+    if [ ${#invalid_skills[@]} -gt 0 ]; then
+      echo -e "  ${YELLOW}⚠${NC}  Invalid frontmatter: ${invalid_skills[*]}"
+      echo "    Fix: ensure SKILL.md starts with --- and contains name: field"
+      ((checks_warn++))
+      skills_ok=false
+    fi
+
+    # Check version.txt
+    if [ ! -f "$FORGE_SKILLS/version.txt" ]; then
+      echo -e "  ${YELLOW}⚠${NC}  Missing skills/version.txt"
+      echo "    Fix: run 'forge sync' to restore"
+      ((checks_warn++))
+      skills_ok=false
+    fi
+
+    if [ "$skills_ok" = true ]; then
+      local skill_count
+      skill_count=$(find "$FORGE_SKILLS" -maxdepth 2 -name "SKILL.md" 2>/dev/null | wc -l | tr -d ' ')
+      echo -e "  ${GREEN}✓${NC} $skill_count skills installed, all valid"
+      ((checks_pass++))
+    fi
+  fi
+
+  # ─── Check 3: Platform configuration ───
+  echo ""
+  echo "Check 3: Platform Config"
+
+  if [ ! -f ".forgeteam/config.yaml" ]; then
+    echo -e "  ${YELLOW}⚠${NC}  Skipped (no config.yaml)"
+    ((checks_warn++))
+  else
+    local target
+    target=$(grep "target:" .forgeteam/config.yaml 2>/dev/null | head -1 | sed 's/^[^:]*: *//' | tr -d '"')
+    target="${target:-claude}"
+
+    local platform_ok=true
+
+    case "$target" in
+      claude)
+        if [ ! -f "CLAUDE.md" ]; then
+          echo -e "  ${RED}✗${NC} CLAUDE.md not found (target: claude)"
+          echo "    Fix: run 'forge generate --target claude'"
+          ((checks_fail++))
+          platform_ok=false
+        fi
+        if [ ! -d ".claude/commands" ]; then
+          echo -e "  ${YELLOW}⚠${NC}  .claude/commands/ not found"
+          echo "    Fix: run 'forge generate --target claude'"
+          ((checks_warn++))
+          platform_ok=false
+        fi
+        ;;
+      cursor)
+        if [ ! -f ".cursor/rules/forgeteam.mdc" ] && [ ! -d ".cursor/rules" ]; then
+          echo -e "  ${RED}✗${NC} .cursor/rules/ not found (target: cursor)"
+          echo "    Fix: run 'forge generate --target cursor'"
+          ((checks_fail++))
+          platform_ok=false
+        fi
+        ;;
+      codex)
+        if [ ! -f "codex.md" ]; then
+          echo -e "  ${RED}✗${NC} codex.md not found (target: codex)"
+          echo "    Fix: run 'forge generate --target codex'"
+          ((checks_fail++))
+          platform_ok=false
+        fi
+        ;;
+      opencode)
+        if [ ! -f "AGENTS.md" ]; then
+          echo -e "  ${RED}✗${NC} AGENTS.md not found (target: opencode)"
+          echo "    Fix: run 'forge generate --target opencode'"
+          ((checks_fail++))
+          platform_ok=false
+        fi
+        ;;
+      windsurf)
+        if [ ! -f ".windsurf/rules/forgeteam.md" ]; then
+          echo -e "  ${RED}✗${NC} .windsurf/rules/forgeteam.md not found (target: windsurf)"
+          echo "    Fix: run 'forge generate --target windsurf'"
+          ((checks_fail++))
+          platform_ok=false
+        fi
+        ;;
+      *)
+        echo -e "  ${YELLOW}⚠${NC}  Unknown target: $target"
+        echo "    Valid targets: claude, cursor, codex, opencode"
+        ((checks_warn++))
+        platform_ok=false
+        ;;
+    esac
+
+    # Check adapter exists
+    if [ ! -f "$FORGE_HOME/adapters/${target}.sh" ]; then
+      echo -e "  ${RED}✗${NC} Adapter not found: adapters/${target}.sh"
+      echo "    Fix: run 'forge sync' to restore adapters"
+      ((checks_fail++))
+      platform_ok=false
+    fi
+
+    if [ "$platform_ok" = true ]; then
+      echo -e "  ${GREEN}✓${NC} Platform files consistent (target: $target)"
+      ((checks_pass++))
+    fi
+  fi
+
+  # ─── Check 4: Memory files ───
+  echo ""
+  echo "Check 4: Memory"
+
+  if [ ! -d ".forgeteam/memory" ]; then
+    echo -e "  ${YELLOW}⚠${NC}  .forgeteam/memory/ not found"
+    echo "    Fix: run 'forge init' or 'forge onboard'"
+    ((checks_warn++))
+  else
+    local memory_ok=true
+
+    if [ ! -f ".forgeteam/memory/project-map.md" ]; then
+      echo -e "  ${YELLOW}⚠${NC}  project-map.md missing"
+      echo "    Fix: run 'forge onboard' to regenerate"
+      ((checks_warn++))
+      memory_ok=false
+    else
+      # Check if project-map is stale (older than 30 days)
+      local map_age
+      if [ "$(uname)" = "Darwin" ]; then
+        map_age=$(( ( $(date +%s) - $(stat -f %m .forgeteam/memory/project-map.md) ) / 86400 ))
+      else
+        map_age=$(( ( $(date +%s) - $(stat -c %Y .forgeteam/memory/project-map.md) ) / 86400 ))
+      fi
+      if [ "$map_age" -gt 30 ]; then
+        echo -e "  ${YELLOW}⚠${NC}  project-map.md is ${map_age} days old"
+        echo "    Fix: run 'forge onboard' to refresh"
+        ((checks_warn++))
+        memory_ok=false
+      fi
+    fi
+
+    if [ "$memory_ok" = true ]; then
+      echo -e "  ${GREEN}✓${NC} Memory files present and fresh"
+      ((checks_pass++))
+    fi
+  fi
+
+  # ─── Check 5: Version compatibility ───
+  echo ""
+  echo "Check 5: Version"
+
+  local local_version
+  local_version=$(cat "$FORGE_SKILLS/version.txt" 2>/dev/null || echo "unknown")
+
+  if [ "$local_version" = "unknown" ]; then
+    echo -e "  ${YELLOW}⚠${NC}  Cannot determine local skill version"
+    echo "    Fix: run 'forge sync'"
+    ((checks_warn++))
+  else
+    echo -e "  ${GREEN}✓${NC} Skills version: v${local_version}"
+    ((checks_pass++))
+
+    # Check if upstream has newer version (non-blocking, best-effort)
+    if [ -f "$FORGE_HOME/.upstream/skills/version.txt" ]; then
+      local remote_version
+      remote_version=$(cat "$FORGE_HOME/.upstream/skills/version.txt" 2>/dev/null || echo "")
+      if [ -n "$remote_version" ] && [ "$remote_version" != "$local_version" ]; then
+        echo -e "  ${YELLOW}⚠${NC}  Update available: v${remote_version}"
+        echo "    Fix: run 'forge sync' to update"
+        ((checks_warn++))
+      fi
+    fi
+  fi
+
+  # ─── Summary ───
+  echo ""
+  echo "════════════════════════════════"
+  echo "Results: ${checks_pass} passed, ${checks_warn} warnings, ${checks_fail} errors"
+  echo ""
+
+  if [ $checks_fail -eq 0 ] && [ $checks_warn -eq 0 ]; then
+    echo -e "${GREEN}✓ Everything looks good!${NC}"
+    return 0
+  elif [ $checks_fail -eq 0 ]; then
+    echo -e "${YELLOW}⚠ Healthy with warnings. See suggestions above.${NC}"
+    return 0
+  else
+    echo -e "${RED}✗ Issues found. Run suggested fixes above.${NC}"
+    return 1
+  fi
+}
+
+forge_evolve_cli() {
+  local subcmd="${1:-report}"
+
+  case "$subcmd" in
+    report)     _evolve_report ;;
+    --create-ep) shift; _evolve_create_ep "$@" ;;
+    -h|--help)
+      echo "Usage: forge evolve [command]"
+      echo ""
+      echo "Commands:"
+      echo "  report          Generate evolution report from local signals (default)"
+      echo "  --create-ep     Create EP from latest report findings"
+      echo ""
+      echo "The report collects:"
+      echo "  • Skill usage patterns (from memory/state)"
+      echo "  • Circuit breaker triggers (from safety.log)"
+      echo "  • Config drift (from doctor output)"
+      echo "  • Version status (local vs upstream)"
+      echo "  • Pending EPs status"
+      ;;
+    *) echo "Unknown: $subcmd. Use 'forge evolve --help'"; return 1 ;;
+  esac
+}
+
+_evolve_report() {
+  echo -e "${BLUE}ForgeTeam Evolve — Signal Collection${NC}"
+  echo "════════════════════════════════════════"
+  echo ""
+
+  local report_dir="evolution"
+  mkdir -p "$report_dir"
+
+  local today
+  today=$(date '+%Y-%m-%d')
+  local report_file="$report_dir/evolution-report-${today}.md"
+
+  # ─── Signal 1: Version & Update Status ───
+  echo "Collecting: version status..."
+  local local_version="unknown"
+  local remote_version="unknown"
+  local update_available="false"
+
+  local_version=$(cat "$FORGE_SKILLS/version.txt" 2>/dev/null || echo "unknown")
+  if [ -f "$FORGE_HOME/.upstream/skills/version.txt" ]; then
+    remote_version=$(cat "$FORGE_HOME/.upstream/skills/version.txt" 2>/dev/null || echo "unknown")
+    [ "$remote_version" != "$local_version" ] && update_available="true"
+  fi
+
+  # ─── Signal 2: Skill Usage Patterns ───
+  echo "Collecting: skill usage patterns..."
+  local skills_used=""
+  local skills_skipped=""
+
+  if [ -f ".forgeteam/memory/state.md" ]; then
+    skills_used=$(grep -c "skill:" .forgeteam/memory/state.md 2>/dev/null || echo "0")
+  fi
+
+  # Count archived specs as completed workflows
+  local completed_workflows=0
+  if [ -d "specs/archived" ]; then
+    completed_workflows=$(find specs/archived -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+  fi
+
+  local active_workflows=0
+  if [ -d "specs/active" ]; then
+    active_workflows=$(find specs/active -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+  fi
+
+  # ─── Signal 3: Safety & Circuit Breaker ───
+  echo "Collecting: safety signals..."
+  local safety_triggers=0
+  local circuit_breaks=0
+
+  if [ -f ".forgeteam/safety.log" ]; then
+    safety_triggers=$(wc -l < .forgeteam/safety.log 2>/dev/null | tr -d ' ')
+  fi
+  if [ -f ".forgeteam/gates.log" ]; then
+    circuit_breaks=$(grep -c "CIRCUIT_BREAK\|FAIL" .forgeteam/gates.log 2>/dev/null || echo "0")
+  fi
+
+  # ─── Signal 4: Extension Usage ───
+  echo "Collecting: extension status..."
+  local installed_extensions=0
+  if [ -d ".forgeteam/extensions/skills" ]; then
+    installed_extensions=$(find .forgeteam/extensions/skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+  fi
+
+  # ─── Signal 5: EP Status ───
+  echo "Collecting: evolution proposals..."
+  local ep_total=0 ep_draft=0 ep_accepted=0
+  for f in evolution/EP-[0-9]*.md; do
+    [ -f "$f" ] || continue
+    echo "$f" | grep -q "template" && continue
+    ((ep_total++))
+    grep -q "状态: draft" "$f" 2>/dev/null && ((ep_draft++))
+    grep -q "状态: accepted" "$f" 2>/dev/null && ((ep_accepted++))
+  done
+
+  # ─── Signal 6: Project Health ───
+  echo "Collecting: project health..."
+  local project_age_days=0
+  if [ -f ".forgeteam/memory/project-map.md" ]; then
+    if [ "$(uname)" = "Darwin" ]; then
+      project_age_days=$(( ( $(date +%s) - $(stat -f %m .forgeteam/memory/project-map.md) ) / 86400 ))
+    else
+      project_age_days=$(( ( $(date +%s) - $(stat -c %Y .forgeteam/memory/project-map.md) ) / 86400 ))
+    fi
+  fi
+
+  # ─── Generate Report ───
+  echo ""
+  echo "Generating report..."
+
+  cat > "$report_file" <<EOF
+# Evolution Report — ${today}
+
+> Generated by: forge evolve
+> ForgeTeam version: v${local_version}
+
+---
+
+## Local Signals
+
+### Version Status
+- Local version: v${local_version}
+- Remote version: v${remote_version}
+- Update available: ${update_available}
+
+### Usage Patterns
+- Completed workflows: ${completed_workflows}
+- Active workflows: ${active_workflows}
+- Project age: ${project_age_days} days
+- Installed extensions: ${installed_extensions}
+
+### Quality Signals
+- Safety log entries: ${safety_triggers}
+- Gate failures / circuit breaks: ${circuit_breaks}
+
+### Evolution Proposals
+- Total EPs: ${ep_total}
+- Draft: ${ep_draft}
+- Accepted: ${ep_accepted}
+
+---
+
+## Observations
+
+EOF
+
+  # Auto-generate observations based on signals
+  {
+    if [ "$update_available" = "true" ]; then
+      echo "- **Update available**: v${local_version} → v${remote_version}. Run \`forge sync\` to update."
+    fi
+
+    if [ "$completed_workflows" -gt 5 ] && [ "$installed_extensions" -eq 0 ]; then
+      echo "- **Extension opportunity**: ${completed_workflows} workflows completed but no extensions installed. Consider adding domain-specific extensions."
+    fi
+
+    if [ "$circuit_breaks" -gt 3 ]; then
+      echo "- **Quality concern**: ${circuit_breaks} gate failures detected. Review verify configuration or skill constraints."
+    fi
+
+    if [ "$project_age_days" -gt 30 ] && [ "$completed_workflows" -eq 0 ]; then
+      echo "- **Adoption stall**: Project initialized ${project_age_days} days ago but no completed workflows. Consider running \`forge onboard\` to refresh."
+    fi
+
+    if [ "$ep_draft" -gt 2 ]; then
+      echo "- **EP backlog**: ${ep_draft} proposals still in draft. Consider reviewing and advancing."
+    fi
+
+    echo ""
+    echo "---"
+    echo ""
+    echo "## Recommendations"
+    echo ""
+    echo "_Fill in after reviewing signals above. Use \`forge evolve --create-ep\` to turn a recommendation into a formal Evolution Proposal._"
+    echo ""
+    echo "---"
+    echo ""
+    echo "## Next Steps"
+    echo ""
+    echo "- [ ] Review observations above"
+    echo "- [ ] Decide which signals warrant action"
+    echo "- [ ] Create EP for significant changes: \`forge evolve --create-ep <title>\`"
+    echo "- [ ] For deeper ecosystem analysis, use \`/forge-evolve\` in your AI tool"
+  } >> "$report_file"
+
+  echo ""
+  echo -e "${GREEN}✓${NC} Report generated: $report_file"
+  echo ""
+  echo "Summary:"
+  echo "  Version: v${local_version} (update: ${update_available})"
+  echo "  Workflows: ${completed_workflows} completed, ${active_workflows} active"
+  echo "  Safety: ${safety_triggers} log entries, ${circuit_breaks} failures"
+  echo "  Extensions: ${installed_extensions} installed"
+  echo "  EPs: ${ep_total} total (${ep_draft} draft, ${ep_accepted} accepted)"
+  echo ""
+  echo "Next: review the report and use 'forge evolve --create-ep <title>' for action items"
+}
+
+_evolve_create_ep() {
+  local title="$*"
+  if [ -z "$title" ]; then
+    echo "Usage: forge evolve --create-ep <title>"
+    echo "  Creates a new Evolution Proposal from report findings"
+    return 1
+  fi
+  forge_ep create "$title"
+}
+
+forge_add() {
+  local source="${1:-}"
+  if [ -z "$source" ]; then
+    echo "Usage: forge add <source>"
+    echo ""
+    echo "Sources:"
+    echo "  <name>             Install from official registry"
+    echo "  <git-url>          Install from Git repository"
+    echo "  <local-path>       Install from local directory"
+    echo ""
+    echo "Options:"
+    echo "  --list             List available extensions in registry"
+    echo ""
+    echo "Related:"
+    echo "  forge remove <name>   Uninstall an extension"
+    return 1
+  fi
+
+  case "$source" in
+    --list) _add_list_registry ;;
+    *)      _add_install "$source" ;;
+  esac
+}
+
+forge_remove() {
+  local name="${1:-}"
+  if [ -z "$name" ]; then
+    echo "Usage: forge remove <name>"
+    echo "  Removes an installed extension from .forgeteam/extensions/skills/"
+    return 1
+  fi
+
+  local ext_dir=".forgeteam/extensions/skills/$name"
+  if [ ! -d "$ext_dir" ]; then
+    echo -e "${RED}Error: extension '$name' not installed${NC}"
+    echo "  Installed extensions are in: .forgeteam/extensions/skills/"
+    return 1
+  fi
+
+  rm -rf "$ext_dir"
+  echo -e "${GREEN}✓${NC} Removed: $name"
+
+  # Update config.yaml
+  if [ -f ".forgeteam/config.yaml" ]; then
+    if [ "$(uname)" = "Darwin" ]; then
+      sed -i '' "/\"${name}\"/d" .forgeteam/config.yaml 2>/dev/null || true
+    else
+      sed -i "/\"${name}\"/d" .forgeteam/config.yaml 2>/dev/null || true
+    fi
+    echo "  Updated config.yaml"
+  fi
+}
+
+_add_list_registry() {
+  local registry_file="$FORGE_HOME/registry/official.yaml"
+  if [ ! -f "$registry_file" ]; then
+    echo "No official registry found."
+    echo "Run 'forge sync' to update, or install by Git URL."
+    return 1
+  fi
+
+  echo -e "${BLUE}Official Extensions${NC}"
+  echo "────────────────────────────────────"
+  printf "  %-24s %s\n" "Name" "Description"
+  echo "  ──────────────────────── ──────────────────────────────"
+
+  # Parse simple YAML format: "name: description"
+  grep "^  [a-z]" "$registry_file" 2>/dev/null | while IFS=: read -r name desc; do
+    name=$(echo "$name" | tr -d ' "')
+    desc=$(echo "$desc" | sed 's/^ *//')
+    printf "  %-24s %s\n" "$name" "$desc"
+  done
+}
+
+_add_install() {
+  local source="$1"
+
+  if [ ! -d ".forgeteam" ]; then
+    echo -e "${RED}Error: not a ForgeTeam project. Run 'forge init' first.${NC}"
+    return 1
+  fi
+
+  mkdir -p .forgeteam/extensions/skills
+
+  # Determine install method
+  if echo "$source" | grep -qE '\.git$|^https?://|^git@'; then
+    _add_from_git "$source"
+  elif [ -d "$source" ]; then
+    _add_from_local "$source"
+  else
+    _add_from_registry "$source"
+  fi
+}
+
+_add_from_git() {
+  local url="$1"
+  local tmp_dir
+  tmp_dir=$(mktemp -d)
+
+  echo "Cloning from: $url"
+  if ! git clone --depth 1 "$url" "$tmp_dir/repo" 2>/dev/null; then
+    rm -rf "$tmp_dir"
+    echo -e "${RED}Error: failed to clone $url${NC}"
+    return 1
+  fi
+
+  # Find SKILL.md in cloned repo
+  local skill_file
+  skill_file=$(find "$tmp_dir/repo" -maxdepth 2 -name "SKILL.md" | head -1)
+
+  if [ -z "$skill_file" ]; then
+    rm -rf "$tmp_dir"
+    echo -e "${RED}Error: no SKILL.md found in repository${NC}"
+    return 1
+  fi
+
+  local skill_dir
+  skill_dir=$(dirname "$skill_file")
+  local skill_name
+  skill_name=$(grep "^name:" "$skill_file" 2>/dev/null | head -1 | sed 's/^name: *//' | tr -d '"')
+  [ -z "$skill_name" ] && skill_name=$(basename "$skill_dir")
+
+  local target=".forgeteam/extensions/skills/$skill_name"
+  if [ -d "$target" ]; then
+    echo -e "${YELLOW}Warning: '$skill_name' already installed, overwriting${NC}"
+    rm -rf "$target"
+  fi
+
+  cp -r "$skill_dir" "$target"
+  rm -rf "$tmp_dir"
+
+  _add_register "$skill_name"
+  echo -e "${GREEN}✓${NC} Installed: $skill_name (from git)"
+}
+
+_add_from_local() {
+  local path="$1"
+
+  if [ ! -f "$path/SKILL.md" ]; then
+    echo -e "${RED}Error: no SKILL.md found in $path${NC}"
+    return 1
+  fi
+
+  local skill_name
+  skill_name=$(grep "^name:" "$path/SKILL.md" 2>/dev/null | head -1 | sed 's/^name: *//' | tr -d '"')
+  [ -z "$skill_name" ] && skill_name=$(basename "$path")
+
+  local target=".forgeteam/extensions/skills/$skill_name"
+  if [ -d "$target" ]; then
+    echo -e "${YELLOW}Warning: '$skill_name' already installed, overwriting${NC}"
+    rm -rf "$target"
+  fi
+
+  cp -r "$path" "$target"
+  _add_register "$skill_name"
+  echo -e "${GREEN}✓${NC} Installed: $skill_name (from local)"
+}
+
+_add_from_registry() {
+  local name="$1"
+  local registry_file="$FORGE_HOME/registry/official.yaml"
+
+  # Check built-in extensions first
+  local builtin_path="$FORGE_HOME/extensions"
+  local found_path=""
+
+  # Search in category/name pattern
+  for category_dir in "$builtin_path"/*/; do
+    [ -d "$category_dir" ] || continue
+    if [ -d "${category_dir}${name}" ] && [ -f "${category_dir}${name}/SKILL.md" ]; then
+      found_path="${category_dir}${name}"
+      break
+    fi
+  done
+
+  # Also try flat name match
+  if [ -z "$found_path" ] && [ -d "$builtin_path/$name" ] && [ -f "$builtin_path/$name/SKILL.md" ]; then
+    found_path="$builtin_path/$name"
+  fi
+
+  if [ -n "$found_path" ]; then
+    _add_from_local "$found_path"
+    return 0
+  fi
+
+  # Try registry file
+  if [ -f "$registry_file" ]; then
+    local url
+    url=$(grep "^  ${name}:" "$registry_file" 2>/dev/null | head -1 | sed 's/^[^:]*: *//' | grep -oE 'https?://[^ ]+')
+    if [ -n "$url" ]; then
+      _add_from_git "$url"
+      return 0
+    fi
+  fi
+
+  echo -e "${RED}Error: extension '$name' not found${NC}"
+  echo ""
+  echo "Try:"
+  echo "  forge add --list            # see available extensions"
+  echo "  forge add <git-url>         # install from Git"
+  echo "  forge add <local-path>      # install from local directory"
+  return 1
+}
+
+_add_register() {
+  local name="$1"
+  if [ -f ".forgeteam/config.yaml" ]; then
+    # Check if already registered
+    if grep -q "\"${name}\"" .forgeteam/config.yaml 2>/dev/null; then
+      return 0
+    fi
+    # Add to extensions.skills list
+    if grep -q "^  skills:" .forgeteam/config.yaml 2>/dev/null; then
+      if [ "$(uname)" = "Darwin" ]; then
+        sed -i '' "/^  skills:/a\\
+    - \"${name}\"" .forgeteam/config.yaml
+      else
+        sed -i "/^  skills:/a\\    - \"${name}\"" .forgeteam/config.yaml
+      fi
+    fi
+  fi
+}
+
+forge_ep() {
+  local subcmd="${1:-}"
+  shift 2>/dev/null || true
+
+  case "$subcmd" in
+    create) _ep_create "$@" ;;
+    list)   _ep_list ;;
+    status) _ep_status "$@" ;;
+    *)
+      echo "Usage: forge ep <command>"
+      echo ""
+      echo "Commands:"
+      echo "  create <title>    Create a new Evolution Proposal"
+      echo "  list              List all proposals with status"
+      echo "  status <NNN> <s>  Update status (draft/reviewing/accepted/rejected/implemented)"
+      ;;
+  esac
+}
+
+_ep_next_number() {
+  local max=0
+  for f in evolution/EP-[0-9]*.md; do
+    [ -f "$f" ] || continue
+    # Skip template file
+    echo "$f" | grep -q "template" && continue
+    local num
+    num=$(basename "$f" | sed 's/EP-0*\([0-9]*\)-.*/\1/')
+    [ "$num" -gt "$max" ] 2>/dev/null && max="$num"
+  done
+  printf "%03d" $((max + 1))
+}
+
+_ep_create() {
+  local title="$*"
+  if [ -z "$title" ]; then
+    echo -e "${RED}Error: title required${NC}"
+    echo "Usage: forge ep create <title>"
+    return 1
+  fi
+
+  mkdir -p evolution
+
+  local number
+  number=$(_ep_next_number)
+  local slug
+  slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-' | cut -c1-50)
+  local filename="evolution/EP-${number}-${slug}.md"
+  local today
+  today=$(date '+%Y-%m-%d')
+
+  cat > "$filename" <<EOF
+# EP-${number}: ${title}
+
+> 状态: draft
+> 创建: ${today}
+> 作者: $(git config user.name 2>/dev/null || echo "unknown")
+
+---
+
+## 触发信号
+
+什么外部变化触发了这个进化提案？
+
+- 观察到的技术趋势：
+- 来源（不限于特定项目，可以是论文、社区讨论、行业报告、用户反馈）：
+- 时效性判断（是短期热点还是长期趋势）：
+
+## 当前短板
+
+ForgeTeam 在这个方向上缺什么？
+
+- 现有能力：
+- 缺失的能力：
+- 用户痛点/反馈：
+
+## 融合方案
+
+### 方案描述
+
+怎么做？具体改什么？
+
+### 落位
+
+| 变更 | 位置 | 类型 |
+|------|------|------|
+| | | core / extension / adapter / template |
+
+### 实现路径
+
+分几步完成？每步交付什么？
+
+## 验证标准
+
+怎么证明这次进化是成功的？
+
+- [ ]
+- [ ] 不违反进化红线（纯文本 / 一人可用 / 3分钟上手 / 离线 / 平台无关 / 人类决策）
+
+## 兼容影响
+
+- 是否 breaking change：
+- 影响的现有 skill：
+- 迁移方案（如需）：
+
+## 参考
+
+-
+
+---
+
+## 评审记录
+
+| 日期 | 评审人 | 结论 | 备注 |
+|------|-------|------|------|
+| | | | |
+EOF
+
+  echo -e "${GREEN}✓${NC} Created: $filename"
+  echo "  Number: EP-${number}"
+  echo "  Status: draft"
+  echo "  Next: edit the file to fill in details"
+}
+
+_ep_list() {
+  if [ ! -d "evolution" ] || [ -z "$(find evolution -name 'EP-[0-9]*.md' 2>/dev/null)" ]; then
+    echo "No Evolution Proposals found."
+    echo "Create one with: forge ep create <title>"
+    return 0
+  fi
+
+  echo -e "${BLUE}Evolution Proposals${NC}"
+  echo "────────────────────────────────────"
+  printf "  %-8s %-14s %s\n" "Number" "Status" "Title"
+  echo "  ──────── ────────────── ──────────────────────────────"
+
+  for f in evolution/EP-[0-9]*.md; do
+    [ -f "$f" ] || continue
+    # Skip template file
+    echo "$f" | grep -q "template" && continue
+    local basename_f
+    basename_f=$(basename "$f" .md)
+    local number
+    number=$(echo "$basename_f" | grep -o 'EP-[0-9]*' | head -1)
+    local status
+    status=$(grep "^> 状态:" "$f" 2>/dev/null | sed 's/^> 状态: *//')
+    [ -z "$status" ] && status="unknown"
+    local title
+    title=$(head -1 "$f" | sed 's/^# EP-[0-9]*: *//')
+
+    local color="$NC"
+    case "$status" in
+      draft)       color="$YELLOW" ;;
+      reviewing)   color="$BLUE" ;;
+      accepted)    color="$GREEN" ;;
+      rejected)    color="$RED" ;;
+      implemented) color="$GREEN" ;;
+    esac
+
+    printf "  %-8s ${color}%-14s${NC} %s\n" "$number" "$status" "$title"
+  done
+}
+
+_ep_status() {
+  local number="${1:-}"
+  local new_status="${2:-}"
+
+  if [ -z "$number" ] || [ -z "$new_status" ]; then
+    echo "Usage: forge ep status <number> <status>"
+    echo "  status: draft | reviewing | accepted | rejected | implemented"
+    return 1
+  fi
+
+  local valid_statuses="draft reviewing accepted rejected implemented"
+  if ! echo "$valid_statuses" | grep -qw "$new_status"; then
+    echo -e "${RED}Error: invalid status '$new_status'${NC}"
+    echo "  Valid: $valid_statuses"
+    return 1
+  fi
+
+  # Pad number to 3 digits
+  local padded
+  padded=$(printf "%03d" "$number" 2>/dev/null || echo "$number")
+
+  local target_file
+  target_file=$(find evolution -name "EP-${padded}-*.md" 2>/dev/null | head -1)
+
+  if [ -z "$target_file" ] || [ ! -f "$target_file" ]; then
+    echo -e "${RED}Error: EP-${padded} not found${NC}"
+    return 1
+  fi
+
+  # Update status in file
+  if [ "$(uname)" = "Darwin" ]; then
+    sed -i '' "s/^> 状态: .*/> 状态: ${new_status}/" "$target_file"
+  else
+    sed -i "s/^> 状态: .*/> 状态: ${new_status}/" "$target_file"
+  fi
+
+  echo -e "${GREEN}✓${NC} EP-${padded} status updated to: ${new_status}"
+}
+
 forge_uninstall() {
   echo -e "${YELLOW}This will remove ForgeTeam from your system:${NC}"
   echo "  • $FORGE_HOME (skills, config, upstream cache)"
@@ -728,7 +1648,12 @@ case "${1:-}" in
   uninstall)  shift; forge_uninstall "$@" ;;
   version)    echo "ForgeTeam v${FORGE_VERSION}" ;;
   verify)     shift; forge_verify "$@" ;;
-  propose|html-prototype|plan|execute|review|ship|debug|memory|evolve)
+  doctor)     shift; forge_doctor "$@" ;;
+  add)        shift; forge_add "$@" ;;
+  remove)     shift; forge_remove "$@" ;;
+  ep)         shift; forge_ep "$@" ;;
+  evolve)     shift; forge_evolve_cli "$@" ;;
+  propose|html-prototype|plan|execute|review|ship|debug|memory)
               forge_skill "$@" ;;
   -h|--help)  usage ;;
   "")         usage ;;

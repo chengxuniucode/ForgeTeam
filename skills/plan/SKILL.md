@@ -76,6 +76,8 @@ constraints:
 
 ### Step 4: 生成 tasks.md
 
+使用 `parallel:` 标记声明无相互依赖、可同时执行的任务组：
+
 ```markdown
 # Tasks: {slug}
 
@@ -86,8 +88,9 @@ constraints:
 
 ---
 
-## Wave 1 (可并行)
+## Wave 1
 
+parallel:
 - [ ] Task 1: {描述}
   - type: create|modify|delete
   - files: {文件路径列表}
@@ -100,7 +103,7 @@ constraints:
   - depends: none
   - verify: {验证方式}
 
-## Wave 2 (依赖 Wave 1)
+## Wave 2
 
 - [ ] Task 3: {描述}
   - type: modify
@@ -108,14 +111,27 @@ constraints:
   - depends: Task 1, Task 2
   - verify: {验证方式}
 
-## Wave 3 (依赖 Wave 2)
+## Wave 3
 
-- [ ] Task 4: {描述}
+parallel:
+- [ ] Task 4a: {描述}
   - type: create
-  - files: {文件路径}
+  - files: {文件路径A}
+  - depends: Task 3
+  - verify: {验证方式}
+
+- [ ] Task 4b: {描述}
+  - type: create
+  - files: {文件路径B}
   - depends: Task 3
   - verify: {验证方式}
 ```
+
+**并行标记规则：**
+- `parallel:` 放在 Wave 标题后、task 列表前
+- 同一 `parallel:` 块内的 task 不得修改相同文件
+- 没有 `parallel:` 标记的 Wave 默认串行执行
+- 拆解时优先考虑哪些 task 可以并行以缩短执行路径
 
 ### Step 5: 确认
 

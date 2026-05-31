@@ -151,6 +151,7 @@ forge generate --target claude     # → CLAUDE.md + .claude/commands/
 forge generate --target cursor     # → .cursor/rules/forgeteam.mdc
 forge generate --target codex      # → codex.md
 forge generate --target opencode   # → AGENTS.md
+forge generate --target windsurf   # → .windsurf/rules/forgeteam.md
 ```
 
 ---
@@ -167,6 +168,12 @@ forge generate --target opencode   # → AGENTS.md
 | `forge config` | 查看配置 |
 | `forge version` | 查看版本 |
 | `forge verify` | 运行四关验证（Build→Test→Run→Safety） |
+| `forge doctor` | 检查配置健康度，诊断问题 |
+| `forge add <source>` | 安装扩展（Git URL / 本地路径 / 官方 registry） |
+| `forge remove <name>` | 卸载扩展 |
+| `forge ep create <title>` | 创建 Evolution Proposal |
+| `forge ep list` | 列出所有 EP 及状态 |
+| `forge evolve` | 收集本地信号，生成进化报告 |
 | `forge uninstall` | 卸载 ForgeTeam |
 
 ---

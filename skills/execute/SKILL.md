@@ -162,12 +162,56 @@ constraints:
 - 如果连续 2 个 task 都触发断路器 → 整体暂停
 - 提示用户可能需要重新 plan
 
-## 波次并行（Full Route）
+## 并行执行（Parallel Execute）
 
-在 Full Route 中，同一 Wave 内的 task 可以并行执行：
-- 利用 AI 工具的多文件编辑能力
-- 同时创建多个不相互依赖的文件
-- 但验证仍然逐个进行
+### 并行声明语法
+
+tasks.md 中使用 `parallel:` 标记声明可并行执行的任务组：
+
+```markdown
+## Wave 1
+
+- [x] Task 1: 创建数据模型
+  - files: src/models/user.ts
+  - verified: ✓
+
+## Wave 2
+
+parallel:
+- [ ] Task 2: 实现注册接口
+  - files: src/routes/register.ts
+  - depends: Task 1
+- [ ] Task 3: 实现登录接口
+  - files: src/routes/login.ts
+  - depends: Task 1
+
+## Wave 3
+
+- [ ] Task 4: 集成测试
+  - files: tests/auth.test.ts
+  - depends: Task 2, Task 3
+```
+
+### 并行执行规则
+
+1. **`parallel:` 块内的 task 无相互依赖**，可同时开始
+2. AI 工具应尽量利用多文件编辑能力同时处理并行任务
+3. 并行任务的**验证仍然逐个进行**，确保每个 task 独立通过
+4. 一个并行任务失败**不阻塞**同组其他任务继续，但阻塞下一 Wave
+5. 并行块结束后，所有任务必须标记 ✓ 才能进入下一 Wave
+
+### 并行安全约束
+
+- 并行任务**不得修改同一文件**（文件冲突 → 改为串行）
+- 并行任务**不得有隐含依赖**（共享状态、执行顺序假设）
+- 若执行中发现并行冲突，自动降级为逐个执行并记录
+
+### 串行回退
+
+当 AI 工具不支持真正并行时（如单线程 CLI），并行声明仍有价值：
+- 告诉 AI **这些任务无顺序依赖**，可以选择任意顺序执行
+- 允许 AI 跳过中间验证，在并行块末尾统一验证
+- 未来支持真并行时无需修改 tasks.md
 
 ## 不做的事
 

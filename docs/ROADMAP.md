@@ -187,7 +187,7 @@ minor — 新 skill、新 extension 类目、新 adapter、进化融合
 patch — bug 修复、现有 skill 优化、文档完善
 ```
 
-当前版本：**1.0.1**
+当前版本：**1.1.0**
 
 ### 发布节奏
 
@@ -201,14 +201,14 @@ patch — bug 修复、现有 skill 优化、文档完善
 
 ## Roadmap 路线图
 
-### v1.1 — 基础进化能力
+### v1.1 — 基础进化能力 ✓
 
-- [ ] **`forge evolve` 命令** — 进化建议报告生成
-- [ ] **`forge add` 命令** — 一键安装社区/企业扩展包
-- [ ] **Evolution Proposal 模板** — 结构化进化提案机制
-- [ ] **Parallel Execute** — 同一 Wave 内多 task 真并行
-- [ ] **Config Validation** — `forge doctor` 检查配置健康度
-- [ ] **Adapter: Windsurf** — 新增 Windsurf 平台适配
+- [x] **`forge evolve` 命令** — 本地信号收集 + 进化建议报告生成
+- [x] **`forge add` 命令** — 一键安装社区/企业扩展包（Git/本地/Registry）
+- [x] **Evolution Proposal 管理** — `forge ep create/list/status` 自动化 EP 生命周期
+- [x] **Parallel Execute** — tasks.md `parallel:` 声明语法 + execute skill 升级
+- [x] **Config Validation** — `forge doctor` 5 项健康检查 + 修复建议
+- [x] **Adapter: Windsurf** — 新增 Windsurf 平台适配
 
 ### v1.2 — 智能进化
 
@@ -270,6 +270,7 @@ forge sync
 |------|------|---------|---------|
 | 2024-01 | v1.0.0 | 初始发布 | — |
 | 2026-05 | v1.0.1 | 英文 README + 进化报告机制首次执行 | 国际化需求 + evolve skill 落地 |
+| 2026-05 | v1.1.0 | 基础进化能力：evolve CLI / add / ep / parallel / doctor / windsurf | EP-001 落地 + 社区扩展需求 |
 
 ---
 

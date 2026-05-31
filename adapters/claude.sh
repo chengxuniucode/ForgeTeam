@@ -59,6 +59,7 @@ On session start, read:
 4. Never skip verification gates
 5. Pause and ask human after 3 failed fix attempts
 6. Keep documentation in sync with code changes
+7. When tasks.md has `parallel:` blocks, execute those tasks concurrently using multi-file editing
 
 ## Route Detection
 
