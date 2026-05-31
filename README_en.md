@@ -151,6 +151,7 @@ forge generate --target claude     # → CLAUDE.md + .claude/commands/
 forge generate --target cursor     # → .cursor/rules/forgeteam.mdc
 forge generate --target codex      # → codex.md
 forge generate --target opencode   # → AGENTS.md
+forge generate --target windsurf   # → .windsurf/rules/forgeteam.md
 ```
 
 ---
@@ -167,6 +168,12 @@ forge generate --target opencode   # → AGENTS.md
 | `forge config` | View configuration |
 | `forge version` | View version |
 | `forge verify` | Run 4-gate verification (Build→Test→Run→Safety) |
+| `forge doctor` | Check configuration health and diagnose issues |
+| `forge add <source>` | Install extension (Git URL / local path / registry name) |
+| `forge remove <name>` | Uninstall an extension |
+| `forge ep create <title>` | Create an Evolution Proposal |
+| `forge ep list` | List all EPs with status |
+| `forge evolve` | Collect local signals and generate evolution report |
 | `forge uninstall` | Uninstall ForgeTeam |
 
 ---
