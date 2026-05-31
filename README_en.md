@@ -207,7 +207,7 @@ forge generate --target opencode   # → AGENTS.md
 
 ## Keywords
 
-AI coding framework, AI agent workflow, Claude Code, Cursor, Codex, OpenCode, one-person team, agentic coding, developer tools, code review automation, MCP protocol, shell-based framework, zero-dependency, software engineering, code quality gate
+AI coding framework, AI agent workflow, Claude Code, Cursor, Codex, OpenCode, one-person team, agentic coding, developer tools, code review automation, MCP protocol, shell-based framework, zero-dependency, software engineering, code quality gate, superpowers, AI superpowers, openspec, spec-driven development, gstack, full-stack AI, vibe coding
 
 ---
 
