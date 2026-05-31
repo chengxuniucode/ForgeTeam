@@ -1,5 +1,7 @@
 # ForgeTeam
 
+**中文 | [English](README_en.md)**
+
 > One person, full team delivery.
 
 开源 AI 编码框架，让一个人拥有全栈团队的交付能力。纯 Shell + Markdown 架构，零依赖，3 分钟集成，适配 Claude Code / Cursor / Codex / OpenCode。
