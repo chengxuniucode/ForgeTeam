@@ -2,11 +2,11 @@
 # Format: name: description | git-url (optional)
 
 extensions:
-  sso: "SSO single sign-on integration"
-  rbac: "Role-based access control"
-  k8s: "Kubernetes deployment automation"
-  migration: "Database migration management"
-  mq: "Message queue integration"
-  logging: "Structured logging setup"
-  e2e: "End-to-end testing framework"
-  theme: "Enterprise UI theme and design system"
+  sso: SSO single sign-on integration
+  rbac: Role-based access control
+  k8s: Kubernetes deployment automation
+  migration: Database migration management
+  mq: Message queue integration
+  logging: Structured logging setup
+  e2e: End-to-end testing framework
+  theme: Enterprise UI theme and design system

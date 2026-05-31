@@ -859,7 +859,7 @@ forge_doctor() {
         ;;
       *)
         echo -e "  ${YELLOW}⚠${NC}  Unknown target: $target"
-        echo "    Valid targets: claude, cursor, codex, opencode"
+        echo "    Valid targets: claude, cursor, codex, opencode, windsurf"
         ((checks_warn++))
         platform_ok=false
         ;;
@@ -1012,12 +1012,6 @@ _evolve_report() {
 
   # ─── Signal 2: Skill Usage Patterns ───
   echo "Collecting: skill usage patterns..."
-  local skills_used=""
-  local skills_skipped=""
-
-  if [ -f ".forgeteam/memory/state.md" ]; then
-    skills_used=$(grep -c "skill:" .forgeteam/memory/state.md 2>/dev/null || echo "0")
-  fi
 
   # Count archived specs as completed workflows
   local completed_workflows=0
@@ -1055,9 +1049,9 @@ _evolve_report() {
   for f in evolution/EP-[0-9]*.md; do
     [ -f "$f" ] || continue
     echo "$f" | grep -q "template" && continue
-    ((ep_total++))
-    grep -q "状态: draft" "$f" 2>/dev/null && ((ep_draft++))
-    grep -q "状态: accepted" "$f" 2>/dev/null && ((ep_accepted++))
+    ep_total=$((ep_total + 1))
+    grep -q "状态: draft" "$f" 2>/dev/null && ep_draft=$((ep_draft + 1))
+    grep -q "状态: accepted" "$f" 2>/dev/null && ep_accepted=$((ep_accepted + 1))
   done
 
   # ─── Signal 6: Project Health ───
@@ -1205,6 +1199,12 @@ forge_remove() {
     return 1
   fi
 
+  # H1: Reject path traversal and invalid characters
+  if echo "$name" | grep -qE '/|\.\.'; then
+    echo -e "${RED}Error: invalid extension name '$name' (must not contain / or ..)${NC}"
+    return 1
+  fi
+
   local ext_dir=".forgeteam/extensions/skills/$name"
   if [ ! -d "$ext_dir" ]; then
     echo -e "${RED}Error: extension '$name' not installed${NC}"
@@ -1215,14 +1215,16 @@ forge_remove() {
   rm -rf "$ext_dir"
   echo -e "${GREEN}✓${NC} Removed: $name"
 
-  # Update config.yaml
+  # H2: Use grep -F for exact match before sed deletion
   if [ -f ".forgeteam/config.yaml" ]; then
-    if [ "$(uname)" = "Darwin" ]; then
-      sed -i '' "/\"${name}\"/d" .forgeteam/config.yaml 2>/dev/null || true
-    else
-      sed -i "/\"${name}\"/d" .forgeteam/config.yaml 2>/dev/null || true
+    if grep -Fq "\"${name}\"" .forgeteam/config.yaml 2>/dev/null; then
+      if [ "$(uname)" = "Darwin" ]; then
+        grep -Fv "\"${name}\"" .forgeteam/config.yaml > .forgeteam/config.yaml.tmp && mv .forgeteam/config.yaml.tmp .forgeteam/config.yaml
+      else
+        grep -Fv "\"${name}\"" .forgeteam/config.yaml > .forgeteam/config.yaml.tmp && mv .forgeteam/config.yaml.tmp .forgeteam/config.yaml
+      fi
+      echo "  Updated config.yaml"
     fi
-    echo "  Updated config.yaml"
   fi
 }
 
