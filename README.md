@@ -205,6 +205,12 @@ forge generate --target opencode   # → AGENTS.md
 
 ---
 
+## 关键词
+
+AI coding framework, AI agent workflow, Claude Code, Cursor, Codex, OpenCode, one-person team, agentic coding, developer tools, code review automation, MCP protocol, shell-based framework, zero-dependency, software engineering, code quality gate
+
+---
+
 ## License
 
 MIT
