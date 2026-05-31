@@ -39,7 +39,7 @@ ForgeTeam consists of two layers:
 | Layer | Responsibility | Executor |
 |-------|---------------|----------|
 | **CLI Layer** (`forge` command) | Init, detect project, generate config, sync updates, run verification | User in terminal |
-| **Skill Layer** (10 SKILL.md files) | Requirement clarification, task breakdown, code implementation, review, doc sync | AI tool in session |
+| **Skill Layer** (11 SKILL.md files) | Requirement clarification, task breakdown, code implementation, review, doc sync | AI tool in session |
 
 The CLI provides infrastructure; Skills provide behavioral guidance. AI tools read skill files as workflow instructions. Users can independently verify code quality at any time via `forge verify`, without relying on AI self-reporting completion.
 

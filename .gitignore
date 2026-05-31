@@ -35,6 +35,7 @@ bin/prebuilt/
 .cursor-plugin/
 
 # Private development docs (contents ignored via docs/.gitignore)
+docs/promotion/
 
 
 # Dependencies and build outputs
