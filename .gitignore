@@ -13,7 +13,6 @@ bin/prebuilt/
 
 # Sensitive local config
 .npmrc
-.claude/settings.local.json
 .claude/**/*.local.*
 *.local.json
 
@@ -41,3 +40,15 @@ docs/promotion/
 # Dependencies and build outputs
 node_modules/
 dist/
+
+# ForgeTeam
+.forgeteam/safety.log
+.forgeteam/gates.log
+
+# Keep ForgeTeam project config in git:
+# - .forgeteam/config.yaml
+# - .forgeteam/extensions/
+# - CLAUDE.md
+# - .claude/commands/
+# Ignore only local Claude state files.
+.claude/settings.local.json

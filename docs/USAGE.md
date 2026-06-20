@@ -3,6 +3,35 @@
 > **核心原则：用户只需描述需求，ForgeTeam 自动路由。**
 > 以下 slash command 在需要手动干预或从中断恢复时使用。
 
+## 使用前提
+
+先区分两类命令：
+
+- `forge ...`：终端里的全局 CLI 命令
+- `/forge-*`：Claude Code 等 AI 工具里的项目命令
+
+安装 ForgeTeam 后，只会得到全局 `forge` 命令。  
+要在某个项目里看到 `/forge-*`，必须先进入该项目执行一次：
+
+```bash
+cd your-project
+forge init
+```
+
+`forge init` 会在当前项目生成：
+- `.forgeteam/`
+- `CLAUDE.md`
+- `.claude/commands/`
+
+如果你使用其它工具，再额外生成对应配置：
+
+```bash
+forge generate --target cursor
+forge generate --target codex
+forge generate --target opencode
+forge generate --target windsurf
+```
+
 ## 自动路由 vs 手动命令
 
 ```

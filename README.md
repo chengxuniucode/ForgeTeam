@@ -19,6 +19,32 @@ git clone https://github.com/chengxuniucode/ForgeTeam.git ~/.forgeteam
 ln -sf ~/.forgeteam/forge /usr/local/bin/forge
 ```
 
+安装完成后，只是获得全局 CLI `forge` 命令。
+
+- `forge` 是全局命令，可在任意目录执行 `forge version`、`forge init`、`forge verify`
+- `/forge-*` 是 AI 工具里的项目命令，不会因为全局安装自动出现
+- 要在某个项目里使用 Claude Code / Cursor / Codex，需要先进入该项目执行一次 `forge init`
+
+## 快速开始
+
+```bash
+# 1. 安装 ForgeTeam（全局，只需一次）
+curl -sSL https://raw.githubusercontent.com/chengxuniucode/ForgeTeam/main/install.sh | bash
+
+# 2. 进入你的项目（每个项目都要执行一次）
+cd your-project
+forge init
+
+# 3. 如果你还需要其它 AI 工具配置，再按需生成
+forge generate --target cursor
+forge generate --target codex
+```
+
+执行完成后：
+- Claude Code 会读取 `CLAUDE.md` 和 `.claude/commands/`
+- Cursor 会读取 `.cursor/rules/forgeteam.mdc`
+- Codex 会读取 `codex.md`
+
 ## 初始化项目
 
 ```bash
@@ -26,11 +52,22 @@ cd your-project
 forge init
 ```
 
+> `forge init` 是项目级初始化。每个要接入 ForgeTeam 的项目，都需要执行一次。
+
 执行后自动完成：
 - 创建 `.forgeteam/` 目录（配置 + 记忆）
 - 扫描项目生成 `project-map.md`
 - 检测语言/框架/构建命令
-- 生成 AI 工具配置文件（CLAUDE.md / .cursor/rules/ 等）
+- 默认生成 Claude Code 配置文件（`CLAUDE.md` / `.claude/commands/` / `.claude/settings.json`）
+
+如果你使用其它 AI 工具，再额外执行：
+
+```bash
+forge generate --target cursor
+forge generate --target codex
+forge generate --target opencode
+forge generate --target windsurf
+```
 
 ## 工作原理
 
@@ -46,6 +83,15 @@ CLI 提供基础设施，Skill 提供行为指南。AI 工具读取 skill 文件
 ---
 
 ## 使用方式
+
+**先完成项目初始化，再去 AI 工具里使用自然语言或 `/forge-*` 命令。**
+
+首次接入某个项目：
+
+```bash
+cd your-project
+forge init
+```
 
 **直接用自然语言描述需求，ForgeTeam 自动判定路由并执行。无需记住命令。**
 

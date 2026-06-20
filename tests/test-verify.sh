@@ -63,9 +63,54 @@ else
   ((errors++))
 fi
 
-# ─── Test 2: Build failure → verify fails ───
+# ─── Test 2: Long-running start command passes run gate ───
 echo ""
-echo "Test 2: Build failure causes verify to fail"
+echo "Test 2: Long-running start command passes run gate"
+echo "───────────────────────────────────────────────"
+
+mkdir -p "$TEST_DIR/test-run-pass"
+cd "$TEST_DIR/test-run-pass"
+git init -q
+
+mkdir -p .forgeteam
+cat > .forgeteam/config.yaml <<'EOF'
+version: "1.0"
+project:
+  name: "test-run-pass"
+  type: "web-app"
+  language: "javascript"
+verification:
+  build_gate: false
+  test_gate: false
+  run_gate: true
+  safety_gate: true
+commands:
+  build: ""
+  test: ""
+  start: "sleep 10"
+EOF
+
+output=$("$PROJECT_ROOT/forge" verify 2>&1) || true
+
+if echo "$output" | grep -q "PASS (process alive after 5s)"; then
+  echo "  PASS: run gate accepts long-running process"
+else
+  echo "  FAIL: expected run gate to pass for long-running process"
+  echo "  Output: $output"
+  ((errors++))
+fi
+
+if echo "$output" | grep -q "All gates passed"; then
+  echo "  PASS: verify completes and prints summary after run gate success"
+else
+  echo "  FAIL: expected verify to reach final summary after run gate success"
+  echo "  Output: $output"
+  ((errors++))
+fi
+
+# ─── Test 3: Build failure → verify fails ───
+echo ""
+echo "Test 3: Build failure causes verify to fail"
 echo "────────────────────────────────────────────"
 
 mkdir -p "$TEST_DIR/test-fail"
@@ -97,9 +142,9 @@ else
   echo "  PASS: verify correctly returns exit 1 on build failure"
 fi
 
-# ─── Test 3: No config → error message ───
+# ─── Test 4: No config → error message ───
 echo ""
-echo "Test 3: Missing config shows error"
+echo "Test 4: Missing config shows error"
 echo "───────────────────────────────────"
 
 mkdir -p "$TEST_DIR/test-noconfig"
@@ -116,9 +161,9 @@ else
   ((errors++))
 fi
 
-# ─── Test 4: Safety gate catches .env in git ───
+# ─── Test 5: Safety gate catches .env in git ───
 echo ""
-echo "Test 4: Safety gate detects .env tracked by git"
+echo "Test 5: Safety gate detects .env tracked by git"
 echo "────────────────────────────────────────────────"
 
 mkdir -p "$TEST_DIR/test-safety"
@@ -158,9 +203,9 @@ else
   ((errors++))
 fi
 
-# ─── Test 5: All gates skipped when disabled ───
+# ─── Test 6: All gates skipped when disabled ───
 echo ""
-echo "Test 5: All gates skip when disabled"
+echo "Test 6: All gates skip when disabled"
 echo "─────────────────────────────────────"
 
 mkdir -p "$TEST_DIR/test-skip"

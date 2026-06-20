@@ -19,6 +19,32 @@ git clone https://github.com/chengxuniucode/ForgeTeam.git ~/.forgeteam
 ln -sf ~/.forgeteam/forge /usr/local/bin/forge
 ```
 
+After installation, you only get the global CLI command `forge`.
+
+- `forge` is a global command for running `forge version`, `forge init`, `forge verify`, and similar commands in any directory
+- `/forge-*` are project commands inside AI tools and do not appear automatically after global installation
+- To use ForgeTeam in Claude Code / Cursor / Codex for a specific project, enter that project and run `forge init` once
+
+## Quick Start
+
+```bash
+# 1. Install ForgeTeam globally (once per machine)
+curl -sSL https://raw.githubusercontent.com/chengxuniucode/ForgeTeam/main/install.sh | bash
+
+# 2. Enter your project (once per project)
+cd your-project
+forge init
+
+# 3. Generate other AI tool configs only if you need them
+forge generate --target cursor
+forge generate --target codex
+```
+
+After that:
+- Claude Code reads `CLAUDE.md` and `.claude/commands/`
+- Cursor reads `.cursor/rules/forgeteam.mdc`
+- Codex reads `codex.md`
+
 ## Initialize a Project
 
 ```bash
@@ -26,11 +52,22 @@ cd your-project
 forge init
 ```
 
+> `forge init` is project-level initialization. Run it once for every project that should use ForgeTeam.
+
 This automatically:
 - Creates `.forgeteam/` directory (config + memory)
 - Scans the project to generate `project-map.md`
 - Detects language/framework/build commands
-- Generates AI tool config files (CLAUDE.md / .cursor/rules/ etc.)
+- Generates Claude Code config files by default (`CLAUDE.md` / `.claude/commands/` / `.claude/settings.json`)
+
+If you use other AI tools, generate their configs separately:
+
+```bash
+forge generate --target cursor
+forge generate --target codex
+forge generate --target opencode
+forge generate --target windsurf
+```
 
 ## How It Works
 
@@ -46,6 +83,15 @@ The CLI provides infrastructure; Skills provide behavioral guidance. AI tools re
 ---
 
 ## Usage
+
+**Initialize the project first, then use natural language or `/forge-*` commands inside your AI tool.**
+
+For first-time setup in a project:
+
+```bash
+cd your-project
+forge init
+```
 
 **Simply describe your requirements in natural language — ForgeTeam automatically determines routing and executes. No commands to memorize.**
 
