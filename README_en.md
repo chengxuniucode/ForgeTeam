@@ -38,33 +38,6 @@ forge init
 # 3. Generate other AI tool configs only if you need them
 forge generate --target cursor
 forge generate --target codex
-```
-
-After that:
-- Claude Code reads `CLAUDE.md` and `.claude/commands/`
-- Cursor reads `.cursor/rules/forgeteam.mdc`
-- Codex reads `codex.md`
-
-## Initialize a Project
-
-```bash
-cd your-project
-forge init
-```
-
-> `forge init` is project-level initialization. Run it once for every project that should use ForgeTeam.
-
-This automatically:
-- Creates `.forgeteam/` directory (config + memory)
-- Scans the project to generate `project-map.md`
-- Detects language/framework/build commands
-- Generates Claude Code config files by default (`CLAUDE.md` / `.claude/commands/` / `.claude/settings.json`)
-
-If you use other AI tools, generate their configs separately:
-
-```bash
-forge generate --target cursor
-forge generate --target codex
 forge generate --target opencode
 forge generate --target windsurf
 ```

@@ -38,33 +38,6 @@ forge init
 # 3. 如果你还需要其它 AI 工具配置，再按需生成
 forge generate --target cursor
 forge generate --target codex
-```
-
-执行完成后：
-- Claude Code 会读取 `CLAUDE.md` 和 `.claude/commands/`
-- Cursor 会读取 `.cursor/rules/forgeteam.mdc`
-- Codex 会读取 `codex.md`
-
-## 初始化项目
-
-```bash
-cd your-project
-forge init
-```
-
-> `forge init` 是项目级初始化。每个要接入 ForgeTeam 的项目，都需要执行一次。
-
-执行后自动完成：
-- 创建 `.forgeteam/` 目录（配置 + 记忆）
-- 扫描项目生成 `project-map.md`
-- 检测语言/框架/构建命令
-- 默认生成 Claude Code 配置文件（`CLAUDE.md` / `.claude/commands/` / `.claude/settings.json`）
-
-如果你使用其它 AI 工具，再额外执行：
-
-```bash
-forge generate --target cursor
-forge generate --target codex
 forge generate --target opencode
 forge generate --target windsurf
 ```
