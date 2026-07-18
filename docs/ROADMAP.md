@@ -108,20 +108,23 @@ ForgeTeam 持续关注以下**技术方向**（不是特定项目），当任何
 
 ## 自进化机制
 
-### 机制一：`forge evolve` 命令（规划中）
+### 机制一：`forge evolve` 命令（已实现）
 
 ```bash
 forge evolve
-# 自动扫描:
-#   1. 检查 GitHub trending (AI coding 相关)
-#   2. 检查已关注项目的 release notes
-#   3. 分析社区 issues 中的 feature requests
-#   4. 对比当前 skill 能力 vs 生态趋势
+# 本地收集:
+#   1. 版本与上游缓存状态
+#   2. active / archived spec、扩展和 EP 状态
+#   3. safety / gates 日志与本地 analytics 事件
 # 输出:
-#   - evolution-report.md (进化建议报告)
-#   - 建议新增/升级的 skill 列表
-#   - 建议关注的新方向
+#   - evolution/evolution-report-<日期>.md
+#   - 无样本时的明确采集引导
+
+# 将报告结论转为人工评审的 EP（不自动修改代码）
+forge evolve --create-ep <title>
 ```
+
+> 外部生态扫描由 `/forge-evolve` skill 在人工会话中完成；CLI 保持离线、只处理本地可复核信号。
 
 ### 机制二：Learn → Evolve 闭环
 
@@ -187,7 +190,7 @@ minor — 新 skill、新 extension 类目、新 adapter、进化融合
 patch — bug 修复、现有 skill 优化、文档完善
 ```
 
-当前版本：**1.1.0**
+当前发布版本：**1.1.0**。下列“已实现”功能位于当前工作树，待维护者发布后再调整版本号。
 
 ### 发布节奏
 
@@ -210,13 +213,19 @@ patch — bug 修复、现有 skill 优化、文档完善
 - [x] **Config Validation** — `forge doctor` 5 项健康检查 + 修复建议
 - [x] **Adapter: Windsurf** — 新增 Windsurf 平台适配
 
-### v1.2 — 智能进化
+### v1.2 — 可观测与可恢复工作流（实施中）
 
-- [ ] **Usage Analytics（本地）** — 统计 skill 使用率、跳过率、断路器触发率
-- [ ] **Adaptive Routing** — 基于历史数据自动调整路由阈值
-- [ ] **Spec Format v2** — 可扩展的结构化 spec，支持自动验收
-- [ ] **Memory Search** — 记忆系统支持语义检索
-- [ ] **Multi-Agent Mode** — 多 skill 并行协作
+- [x] **Usage Analytics（本地）** — `forge analytics event` 写入最小化 JSONL；`forge evolve report` 汇总事件、质量与 EP 信号
+- [x] **Workflow State & Approval** — `forge state show/transition/approve` 记录状态和人工计划批准
+- [x] **Task Index & Workspace Registry** — `forge index rebuild`、`forge workspace add/list` 支持本地恢复和显式多仓根目录
+- [x] **Checkpoint / Worktree** — `forge checkpoint` 与可选 `forge worktree` 提供可恢复、隔离的 Git 工作流
+- [x] **Test-first Contract** — `forge tdd check` 和 plan/execute skill 要求测试先行或明确豁免
+- [x] **Delta Spec Archive** — `forge spec archive` 保留 ADDED/MODIFIED/REMOVED 增量历史
+- [x] **Portable Extension Bundle** — manifest 模板、`forge bundle validate/export`
+- [x] **Evidence-shaped Memory** — `forge memory record/prune` 与证据字段约定
+- [ ] **Adaptive Routing** — 需积累真实样本后再调整阈值；当前不基于无样本数据自动调参
+- [ ] **Memory Search** — 保持离线前提下评估轻量索引/检索方案
+- [ ] **Multi-Agent Mode** — 保持为可选协作策略，不成为基础流程依赖
 - [ ] **Scaffold Skill** — 全栈脚手架自动生成
 
 ### v1.3 — 生态进化
@@ -271,6 +280,7 @@ forge sync
 | 2024-01 | v1.0.0 | 初始发布 | — |
 | 2026-05 | v1.0.1 | 英文 README + 进化报告机制首次执行 | 国际化需求 + evolve skill 落地 |
 | 2026-05 | v1.1.0 | 基础进化能力：evolve CLI / add / ep / parallel / doctor / windsurf | EP-001 落地 + 社区扩展需求 |
+| 2026-07 | unreleased | 本地可观测与可恢复工作流：analytics、state、index、workspace、checkpoint、worktree、TDD、delta spec、bundle、memory | EP-002 + 生态对标结论 |
 
 ---
 
