@@ -22,6 +22,7 @@ This project uses ForgeTeam workflow. Follow these rules:
 6. Update state.md after significant actions
 7. Pause after 3 failed fix attempts
 8. Keep documentation in sync with code changes
+9. For testable behavior, write or confirm the failing test before implementation; record an explicit exemption when this is not applicable
 
 Note: [html] = auto-insert html-prototype step when UI/page changes are involved
 
@@ -33,6 +34,7 @@ Load before working:
 - .forgeteam/memory/state.md
 - .forgeteam/memory/decisions.md
 - .forgeteam/memory/known-issues.md
+- .forgeteam/analytics/events.jsonl (when present; never put code, prompts, or secrets in events)
 - specs/active/ (if exists)
 
 ## Available Skills

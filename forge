@@ -69,6 +69,16 @@ Skill Commands (also available as slash commands in AI tools):
   debug           Debug verification failures
   memory          Save progress and extract learnings
   evolve          Evaluate ecosystem changes
+  analytics       Record local, privacy-minimized workflow events
+  checkpoint      Save a recoverable WIP checkpoint
+  worktree        Manage optional isolated Git worktrees
+  bundle          Validate a portable extension bundle
+  state           Show/transition workflow state or record plan approval
+  index           Rebuild the local task index
+  workspace       Register/list explicit local repository roots
+  spec            Archive a spec and preserve its delta history
+  tdd             Check a task plan's test-first contract
+  memory          Record or prune evidence-backed local memory
 
 Options:
   -h, --help    Show this help
@@ -181,6 +191,8 @@ forge_init() {
   mkdir -p .forgeteam/memory
   mkdir -p .forgeteam/extensions/skills
   mkdir -p .forgeteam/extensions/templates
+  mkdir -p .forgeteam/analytics
+  mkdir -p .forgeteam/workspaces
   mkdir -p specs/active
   mkdir -p specs/archived
 
@@ -231,6 +243,14 @@ memory:
   track_issues: true
   max_known_issues: 50
   max_decisions: 100
+
+analytics:
+  enabled: true
+  retention_days: 90
+
+workspaces:
+  enabled: false
+  roots: []
 
 safety:
   level: "standard"
@@ -285,6 +305,14 @@ YAML
 GITIGNORE
   fi
 
+  # Complete the local memory contract without overwriting user-authored files.
+  for memory_file in decisions known-issues preferences state; do
+    if [ ! -f ".forgeteam/memory/${memory_file}.md" ] && [ -f "$FORGE_HOME/templates/memory/${memory_file}.md" ]; then
+      cp "$FORGE_HOME/templates/memory/${memory_file}.md" ".forgeteam/memory/${memory_file}.md"
+    fi
+  done
+  : > .forgeteam/analytics/events.jsonl
+
   echo ""
   echo "Running onboard..."
   forge_onboard
@@ -300,6 +328,148 @@ GITIGNORE
   echo "  1. Review .forgeteam/config.yaml"
   echo "  2. Review .forgeteam/memory/project-map.md"
   echo "  3. Start working: describe what you want to build"
+}
+
+_analytics_event() {
+  local stage="$1" event="$2" outcome="${3:-unknown}" reason="${4:-}"
+  [ -d ".forgeteam" ] || { echo "Not initialized. Run: forge init"; return 1; }
+  mkdir -p .forgeteam/analytics
+  local task_id route safe_reason
+  task_id=$(grep '^\- Task ID:' .forgeteam/memory/state.md 2>/dev/null | head -1 | sed 's/.*: *//' || true)
+  route=$(grep '^\- 路由:' .forgeteam/memory/state.md 2>/dev/null | head -1 | sed 's/.*: *//' || true)
+  safe_reason=$(sanitize_value "$reason")
+  printf '{"timestamp":"%s","task_id":"%s","route":"%s","stage":"%s","event":"%s","outcome":"%s","reason":"%s"}\n' "$(portable_date)" "${task_id:-anonymous}" "${route:-unknown}" "$stage" "$event" "$outcome" "$safe_reason" >> .forgeteam/analytics/events.jsonl
+}
+
+forge_analytics() {
+  [ "${1:-}" = "event" ] || { echo "Usage: forge analytics event <stage> <event> [outcome] [reason]"; return 1; }
+  shift
+  [ $# -ge 2 ] || { echo "Usage: forge analytics event <stage> <event> [outcome] [reason]"; return 1; }
+  _analytics_event "$1" "$2" "${3:-unknown}" "${4:-}"
+  echo "✓ Local analytics event recorded"
+}
+
+forge_checkpoint() {
+  local description="$*"
+  [ -n "$description" ] || { echo "Usage: forge checkpoint <description>"; return 1; }
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "Error: checkpoint requires a Git worktree"; return 1; }
+  git diff --quiet && git diff --cached --quiet && { echo "Nothing to checkpoint"; return 0; }
+  git add -A
+  git commit -m "wip: checkpoint - $(sanitize_value "$description")"
+  _analytics_event memory checkpoint pass "$description" || true
+}
+
+forge_worktree() {
+  local subcmd="${1:-list}" name="${2:-}"
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "Error: worktree requires a Git repository"; return 1; }
+  case "$subcmd" in
+    list) git worktree list ;;
+    create)
+      [[ "$name" =~ ^[a-zA-Z0-9._-]+$ ]] || { echo "Error: invalid worktree name"; return 1; }
+      mkdir -p .forgeteam/workspaces
+      git worktree add ".forgeteam/workspaces/$name" -b "forge/$name"
+      _analytics_event workspace create pass "$name" || true ;;
+    remove)
+      [[ "$name" =~ ^[a-zA-Z0-9._-]+$ ]] || { echo "Error: invalid worktree name"; return 1; }
+      [ -d ".forgeteam/workspaces/$name" ] || { echo "Error: worktree not found"; return 1; }
+      git worktree remove ".forgeteam/workspaces/$name"
+      _analytics_event workspace remove pass "$name" || true ;;
+    *) echo "Usage: forge worktree <list|create|remove> [name]"; return 1 ;;
+  esac
+}
+
+forge_bundle() {
+  local action="${1:-}" target="${2:-}"
+  if [ "$action" = export ]; then
+    [ -d "$target" ] || { echo "Error: extension directory not found"; return 1; }
+    local output="${3:-$(basename "$target").tar.gz}"
+    tar -czf "$output" -C "$(dirname "$target")" "$(basename "$target")"
+    echo "✓ Bundle exported: $output"
+    return 0
+  fi
+  [ "$action" = "validate" ] || { echo "Usage: forge bundle <validate|export> <extension-dir> [output]"; return 1; }
+  [ -f "$target/SKILL.md" ] || { echo "Error: SKILL.md not found"; return 1; }
+  head -1 "$target/SKILL.md" | grep -q '^---$' || { echo "Error: invalid SKILL.md frontmatter"; return 1; }
+  grep -q '^name:' "$target/SKILL.md" || { echo "Error: missing skill name"; return 1; }
+  if [ -f "$target/manifest.yaml" ]; then
+    grep -q '^name:' "$target/manifest.yaml" || { echo "Error: manifest missing name"; return 1; }
+    grep -q '^platforms:' "$target/manifest.yaml" || { echo "Error: manifest missing platforms"; return 1; }
+  fi
+  echo "✓ Portable extension bundle is valid"
+}
+
+forge_state() {
+  local subcmd="${1:-show}" value="${2:-}"
+  [ -f .forgeteam/memory/state.md ] || { echo "Not initialized. Run: forge init"; return 1; }
+  case "$subcmd" in
+    show) cat .forgeteam/memory/state.md ;;
+    transition)
+      case "$value" in planned|running|blocked|verifying|done|aborted) ;; *) echo "Usage: forge state transition <planned|running|blocked|verifying|done|aborted>"; return 1;; esac
+      sed -i.bak "s/^- 状态:.*/- 状态: $value/" .forgeteam/memory/state.md && rm -f .forgeteam/memory/state.md.bak
+      _analytics_event state transition pass "$value" || true ;;
+    approve)
+      printf '\n- 计划批准: %s\n' "$(portable_date)" >> .forgeteam/memory/state.md
+      _analytics_event plan approved pass "human approval" || true ;;
+    *) echo "Usage: forge state <show|transition|approve>"; return 1;;
+  esac
+}
+
+forge_index() {
+  [ "${1:-rebuild}" = "rebuild" ] || { echo "Usage: forge index rebuild"; return 1; }
+  mkdir -p .forgeteam/memory
+  {
+    echo '# Task Index'
+    echo
+    for root in specs/active specs/archived; do
+      [ -d "$root" ] || continue
+      find "$root" -mindepth 1 -maxdepth 1 -type d 2>/dev/null || true
+    done | while read -r d; do
+      printf -- '- %s | %s | %s\n' "$(basename "$d")" "$(basename "$(dirname "$d")")" "$(find "$d" -maxdepth 1 -type f -name tasks.md -exec grep -c '^\- \[x\]' {} \; 2>/dev/null || echo 0)"
+    done
+  } > .forgeteam/memory/index.md
+  echo "✓ Task index rebuilt"
+}
+
+forge_workspace() {
+  local subcmd="${1:-list}" path="${2:-}"
+  mkdir -p .forgeteam/workspaces
+  case "$subcmd" in
+    add) [ -d "$path" ] || { echo "Error: directory not found"; return 1; }; printf '%s\n' "$(cd "$path" && pwd)" >> .forgeteam/workspaces/roots.txt; sort -u .forgeteam/workspaces/roots.txt -o .forgeteam/workspaces/roots.txt ;;
+    list) cat .forgeteam/workspaces/roots.txt 2>/dev/null || true ;;
+    *) echo "Usage: forge workspace <add|list> [path]"; return 1;;
+  esac
+}
+
+forge_memory_cli() {
+  local subcmd="${1:-record}" type="${2:-}" text="${3:-}"
+  case "$subcmd" in
+    record)
+      case "$type" in decision|issue|preference) ;; *) echo "Usage: forge memory record <decision|issue|preference> <text>"; return 1;; esac
+      [ -n "$text" ] || { echo "Error: text required"; return 1; }
+      printf '\n- [%s] evidence: manual; confidence: medium; reviewed: %s\n' "$text" "$(date '+%Y-%m-%d')" >> ".forgeteam/memory/${type}s.md"
+      ;;
+    prune) find .forgeteam/memory -name '*.md' -type f -mtime +180 -print ;;
+    *) echo "Usage: forge memory <record|prune> ..."; return 1;;
+  esac
+}
+
+forge_spec() {
+  local subcmd="${1:-}" slug="${2:-}"
+  [ "$subcmd" = archive ] && [ -n "$slug" ] || { echo "Usage: forge spec archive <slug>"; return 1; }
+  local source="specs/active/$slug" target="specs/archived/$slug"
+  [ -d "$source" ] || { echo "Error: active spec not found"; return 1; }
+  mkdir -p specs/current specs/archived
+  if [ -f "$source/delta.md" ]; then cat "$source/delta.md" >> specs/current/CHANGELOG.md; fi
+  mv "$source" "$target"
+  forge_index rebuild
+  echo "✓ Spec archived with delta history"
+}
+
+forge_tdd() {
+  local task_file="${2:-}"
+  [ "${1:-}" = check ] && [ -n "$task_file" ] || { echo "Usage: forge tdd check <tasks.md>"; return 1; }
+  grep -qiE 'test.first|测试先行|失败测试' "$task_file" || { echo "FAIL: task plan lacks a test-first contract or an explicit exemption"; return 1; }
+  echo "✓ Test-first contract recorded"
 }
 
 forge_onboard() {
@@ -662,9 +832,11 @@ forge_verify() {
     if [ $safety_issues -eq 0 ]; then
       echo -e "  ${GREEN}PASS${NC}"
       ((gates_passed++))
+      _analytics_event safety gate pass "no safety issues" || true
     else
       echo -e "  ${RED}FAIL${NC} ($safety_issues issue(s))"
       ((gates_failed++))
+      _analytics_event safety gate fail "${safety_issues} safety issues" || true
     fi
   fi
 
@@ -1020,6 +1192,13 @@ _evolve_report() {
     completed_workflows=$(find specs/archived -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
   fi
 
+  local analytics_events=0 analytics_completed=0 analytics_failed=0
+  if [ -f ".forgeteam/analytics/events.jsonl" ]; then
+    analytics_events=$(wc -l < .forgeteam/analytics/events.jsonl | tr -d ' ')
+    analytics_completed=$(grep -c '"outcome":"pass"\|"outcome":"completed"' .forgeteam/analytics/events.jsonl 2>/dev/null || true)
+    analytics_failed=$(grep -c '"outcome":"fail"\|"outcome":"failed"' .forgeteam/analytics/events.jsonl 2>/dev/null || true)
+  fi
+
   local active_workflows=0
   if [ -d "specs/active" ]; then
     active_workflows=$(find specs/active -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
@@ -1090,6 +1269,8 @@ _evolve_report() {
 - Active workflows: ${active_workflows}
 - Project age: ${project_age_days} days
 - Installed extensions: ${installed_extensions}
+- Local analytics events: ${analytics_events}
+- Successful / failed events: ${analytics_completed} / ${analytics_failed}
 
 ### Quality Signals
 - Safety log entries: ${safety_triggers}
@@ -1114,6 +1295,10 @@ EOF
 
     if [ "$completed_workflows" -gt 5 ] && [ "$installed_extensions" -eq 0 ]; then
       echo "- **Extension opportunity**: ${completed_workflows} workflows completed but no extensions installed. Consider adding domain-specific extensions."
+    fi
+
+    if [ "$analytics_events" -eq 0 ]; then
+      echo "- **Insufficient workflow data**: no local analytics events yet. After a task, record stage outcomes with \`forge analytics event <stage> <event> <pass|fail>\`; no code, prompt, or secret is recorded."
     fi
 
     if [ "$circuit_breaks" -gt 3 ]; then
@@ -1656,7 +1841,17 @@ case "${1:-}" in
   remove)     shift; forge_remove "$@" ;;
   ep)         shift; forge_ep "$@" ;;
   evolve)     shift; forge_evolve_cli "$@" ;;
-  propose|html-prototype|plan|execute|review|ship|debug|memory)
+  analytics)  shift; forge_analytics "$@" ;;
+  checkpoint) shift; forge_checkpoint "$@" ;;
+  worktree)   shift; forge_worktree "$@" ;;
+  bundle)     shift; forge_bundle "$@" ;;
+  state)      shift; forge_state "$@" ;;
+  index)      shift; forge_index "$@" ;;
+  workspace)  shift; forge_workspace "$@" ;;
+  spec)       shift; forge_spec "$@" ;;
+  tdd)        shift; forge_tdd "$@" ;;
+  memory)     shift; forge_memory_cli "$@" ;;
+  propose|html-prototype|plan|execute|review|ship|debug)
               forge_skill "$@" ;;
   -h|--help)  usage ;;
   "")         usage ;;

@@ -41,6 +41,16 @@ docs/promotion/
 node_modules/
 dist/
 
+# Generated presentations
+presentations/
+
+# Development workflow artifacts (generated locally; do not commit)
+specs/active/
+specs/archived/
+evolution/evolution-report-*.md
+evolution/EP-[0-9]*.md
+evolution/radar.md
+
 # ForgeTeam
 .forgeteam/safety.log
 .forgeteam/gates.log

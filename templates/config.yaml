@@ -46,6 +46,14 @@ memory:
   max_known_issues: 50
   max_decisions: 100
 
+analytics:
+  enabled: true
+  retention_days: 90
+
+workspaces:
+  enabled: false
+  roots: []
+
 # ─── 安全配置 ───
 safety:
   level: "standard"         # paranoid | standard | relaxed

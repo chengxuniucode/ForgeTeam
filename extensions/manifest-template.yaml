@@ -1,0 +1,9 @@
+name: "example-extension"
+version: "1.0.0"
+description: "Portable ForgeTeam extension"
+platforms: [claude, codex, cursor, opencode]
+offline: true
+permissions: []
+hooks: []
+compatibility:
+  forgeteam: ">=1.1.0"

@@ -157,8 +157,8 @@ _claude_generate_hooks() {
   "hooks": {
     "SessionStart": [
       {
-        "command": "cat .forgeteam/memory/state.md 2>/dev/null || true",
-        "description": "Load ForgeTeam state on session start"
+        "command": "cat .forgeteam/memory/state.md .forgeteam/memory/decisions.md .forgeteam/memory/known-issues.md 2>/dev/null || true",
+        "description": "Load ForgeTeam state and evidence-backed memory on session start"
       }
     ]
   }
