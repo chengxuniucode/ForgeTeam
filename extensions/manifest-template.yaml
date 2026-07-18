@@ -6,4 +6,4 @@ offline: true
 permissions: []
 hooks: []
 compatibility:
-  forgeteam: ">=1.1.0"
+  forgeteam: ">=1.2.0"

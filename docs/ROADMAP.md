@@ -190,7 +190,7 @@ minor — 新 skill、新 extension 类目、新 adapter、进化融合
 patch — bug 修复、现有 skill 优化、文档完善
 ```
 
-当前发布版本：**1.1.0**。下列“已实现”功能位于当前工作树，待维护者发布后再调整版本号。
+当前发布版本：**v1.2.0**。
 
 ### 发布节奏
 
@@ -280,7 +280,7 @@ forge sync
 | 2024-01 | v1.0.0 | 初始发布 | — |
 | 2026-05 | v1.0.1 | 英文 README + 进化报告机制首次执行 | 国际化需求 + evolve skill 落地 |
 | 2026-05 | v1.1.0 | 基础进化能力：evolve CLI / add / ep / parallel / doctor / windsurf | EP-001 落地 + 社区扩展需求 |
-| 2026-07 | unreleased | 本地可观测与可恢复工作流：analytics、state、index、workspace、checkpoint、worktree、TDD、delta spec、bundle、memory | EP-002 + 生态对标结论 |
+| 2026-07 | v1.2.0 | 本地可观测与可恢复工作流：analytics、state、index、workspace、checkpoint、worktree、TDD、delta spec、bundle、memory | EP-002 + 生态对标结论 |
 
 ---
 

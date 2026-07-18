@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-FORGE_VERSION="1.1.0"
+FORGE_VERSION="1.2.0"
 FORGE_HOME="${FORGE_HOME:-$HOME/.forgeteam}"
 FORGE_SKILLS="$FORGE_HOME/skills"
 
