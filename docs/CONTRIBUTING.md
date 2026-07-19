@@ -260,12 +260,12 @@ refactor(cli): simplify forge_detect_project logic
 
 ```bash
 # 1. 更新版本号
-echo "1.2.0" > skills/version.txt
+echo "1.2.1" > skills/version.txt
 
 # 2. 更新 CHANGELOG
 # 3. 创建 tag
-git tag -a v1.2.0 -m "Release v1.2.0"
-git push origin v1.2.0
+git tag -a v1.2.1 -m "Release v1.2.1"
+git push origin v1.2.1
 
 # 4. GitHub Release
 # 附带: changelog、升级说明、breaking changes（如有）

@@ -223,6 +223,7 @@ forge generate --target windsurf   # → .windsurf/rules/forgeteam.md
 
 | 文档 | 内容 |
 |------|------|
+| [BUSINESS_SCENARIOS.md](docs/BUSINESS_SCENARIOS.md) | 业务研发场景指南：首次使用、功能迭代、原型调整、线上与历史项目 Bug、历史项目迭代 |
 | [USAGE.md](docs/USAGE.md) | Skill 命令详解：流程、示例、断路器 |
 | [extensions/README.md](extensions/README.md) | 扩展分类、目录结构、开发规范 |
 | [ROADMAP.md](docs/ROADMAP.md) | 自进化策略和版本规划 |
