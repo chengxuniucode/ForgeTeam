@@ -125,7 +125,7 @@ echo ""
 echo "Skills (10 required):"
 required_skills=(
   "propose"
-  "html-prototype"
+  "html"
   "onboard"
   "plan"
   "execute"

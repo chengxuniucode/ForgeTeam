@@ -40,7 +40,7 @@ On session start, read:
 ## Available Commands
 
 - /forge-propose — Start a new feature proposal
-- /forge-html-prototype — Generate HTML prototype for visual confirmation
+- /forge-html — Generate HTML prototype for visual confirmation
 - /forge-plan — Create execution plan
 - /forge-execute — Run task execution
 - /forge-review — Code review
@@ -67,7 +67,7 @@ On session start, read:
 - Standard (50-500 lines, <= 10 files): plan → [html] → execute → review → verify → ship
 - Full (> 500 lines, multi-module): propose → [html] → plan → execute → review → verify → ship
 
-Note: [html] = auto-insert html-prototype step when UI/page changes are involved
+Note: [html] = auto-insert html step when UI/page changes are involved
 
 ## Safety Rules
 

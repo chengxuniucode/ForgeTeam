@@ -35,6 +35,7 @@ echo "════════════════════════�
 # Setup
 export FORGE_HOME="$TEST_DIR/forgeteam-home"
 mkdir -p "$FORGE_HOME/skills/propose"
+mkdir -p "$FORGE_HOME/skills/html"
 mkdir -p "$FORGE_HOME/skills/plan"
 mkdir -p "$FORGE_HOME/adapters"
 cp "$PROJECT_ROOT/forge" "$FORGE_HOME/forge"
@@ -42,6 +43,7 @@ cp "$PROJECT_ROOT/adapters"/* "$FORGE_HOME/adapters/"
 
 # Create minimal skill files for testing
 echo -e "---\nname: propose\n---\n# Propose" > "$FORGE_HOME/skills/propose/SKILL.md"
+cp "$PROJECT_ROOT/skills/html/SKILL.md" "$FORGE_HOME/skills/html/SKILL.md"
 echo -e "---\nname: plan\n---\n# Plan" > "$FORGE_HOME/skills/plan/SKILL.md"
 
 cd "$TEST_DIR"
@@ -55,18 +57,23 @@ echo "Testing target: claude"
 bash "$FORGE_HOME/forge" generate --target claude > /dev/null 2>&1
 assert_file_exists "CLAUDE.md"
 assert_contains "CLAUDE.md" "ForgeTeam"
-assert_contains "CLAUDE.md" "html-prototype"
+assert_contains "CLAUDE.md" "/forge-html"
 assert_contains "CLAUDE.md" "[html]"
 assert_contains "CLAUDE.md" "documentation in sync"
 assert_file_exists ".claude/commands/forge-propose.md"
+assert_file_exists ".claude/commands/forge-html.md"
 assert_file_exists ".claude/commands/forge-plan.md"
+if [ -e ".claude/commands/forge-html-prototype.md" ]; then
+  echo "FAIL: legacy forge-html-prototype command should not be generated"
+  ((errors++))
+fi
 echo "  claude: OK"
 
 # ─── Test: Cursor ───
 echo "Testing target: cursor"
 bash "$FORGE_HOME/forge" generate --target cursor > /dev/null 2>&1
 assert_file_exists ".cursor/rules/forgeteam.mdc"
-assert_contains ".cursor/rules/forgeteam.mdc" "html-prototype"
+assert_contains ".cursor/rules/forgeteam.mdc" "html —"
 assert_contains ".cursor/rules/forgeteam.mdc" "[html]"
 assert_contains ".cursor/rules/forgeteam.mdc" "memory"
 echo "  cursor: OK"
@@ -75,7 +82,7 @@ echo "  cursor: OK"
 echo "Testing target: codex"
 bash "$FORGE_HOME/forge" generate --target codex > /dev/null 2>&1
 assert_file_exists "codex.md"
-assert_contains "codex.md" "html-prototype"
+assert_contains "codex.md" "html —"
 assert_contains "codex.md" "[html]"
 assert_contains "codex.md" "documentation in sync"
 echo "  codex: OK"
@@ -84,7 +91,7 @@ echo "  codex: OK"
 echo "Testing target: opencode"
 bash "$FORGE_HOME/forge" generate --target opencode > /dev/null 2>&1
 assert_file_exists "AGENTS.md"
-assert_contains "AGENTS.md" "html-prototype"
+assert_contains "AGENTS.md" "propose, html, plan"
 assert_contains "AGENTS.md" "[html]"
 assert_contains "AGENTS.md" "Doc-Code Sync"
 echo "  opencode: OK"

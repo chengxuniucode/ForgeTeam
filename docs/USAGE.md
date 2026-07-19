@@ -176,7 +176,7 @@ Step 4: 等待用户确认
 用户: /forge-html
 （上一步 propose 产出了"用户管理模块批量导出"的方案）
 
-ForgeTeam (html-prototype):
+ForgeTeam (html):
 ┌─────────────────────────────────────────────────┐
 │ ✅ 原型已生成：prototype/user-export/           │
 │                                                 │

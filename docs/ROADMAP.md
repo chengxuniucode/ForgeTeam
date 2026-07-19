@@ -190,7 +190,7 @@ minor — 新 skill、新 extension 类目、新 adapter、进化融合
 patch — bug 修复、现有 skill 优化、文档完善
 ```
 
-当前发布版本：**v1.2.1**。
+当前发布版本：**v1.2.2**。
 
 ### 发布节奏
 
@@ -282,6 +282,7 @@ forge sync
 | 2026-05 | v1.1.0 | 基础进化能力：evolve CLI / add / ep / parallel / doctor / windsurf | EP-001 落地 + 社区扩展需求 |
 | 2026-07 | v1.2.0 | 本地可观测与可恢复工作流：analytics、state、index、workspace、checkpoint、worktree、TDD、delta spec、bundle、memory | EP-002 + 生态对标结论 |
 | 2026-07 | v1.2.1 | 业务研发场景指南：首次使用、功能迭代、原型调整、线上与历史项目缺陷处理、测试自动化指引 | 业务使用路径与测试角色指引需求 |
+| 2026-07 | v1.2.2 | HTML 原型 Skill 与命令统一为 `html` / `/forge-html`，补齐原型评审反馈回写需求规格的流程与回归校验 | 命令一致性与原型评审闭环需求 |
 
 ---
 

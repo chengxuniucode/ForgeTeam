@@ -23,7 +23,7 @@ Load context from:
 2. **Standard** (50-500 lines, <= 10 files): plan → [html] → execute → review → verify → ship
 3. **Full** (> 500 lines, multi-module): propose → [html] → plan → execute → review → verify → ship
 
-Note: [html] = auto-insert html-prototype step when UI/page changes are involved
+Note: [html] = auto-insert html step when UI/page changes are involved
 
 ## Core Rules
 
@@ -38,7 +38,7 @@ Note: [html] = auto-insert html-prototype step when UI/page changes are involved
 ## Available Skills
 
 - propose — Feature proposal and option comparison
-- html-prototype — Generate static HTML prototype for confirmation
+- html — Generate static HTML prototype for confirmation
 - plan — Task breakdown and execution planning
 - execute — Step-by-step code implementation
 - review — Code review (security, performance, style)

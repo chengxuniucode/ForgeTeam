@@ -1,5 +1,5 @@
 ---
-name: html-prototype
+name: html
 version: "1.0.0"
 description: "生成静态 HTML 原型，可视化确认功能与交互后再进入开发"
 triggers:
@@ -240,7 +240,7 @@ Step 5d: 再次请用户确认
 propose (澄清需求，产出 spec)
   │
   ▼
-html-prototype (可视化确认) ◄── 本 Skill
+html (可视化确认) ◄── 本 Skill
   │
   ├── 确认通过 → plan (任务拆解)
   ├── 需修改 → 重新生成原型

@@ -24,7 +24,7 @@ This project uses ForgeTeam workflow. Follow these rules:
 8. Keep documentation in sync with code changes
 9. For testable behavior, write or confirm the failing test before implementation; record an explicit exemption when this is not applicable
 
-Note: [html] = auto-insert html-prototype step when UI/page changes are involved
+Note: [html] = auto-insert html step when UI/page changes are involved
 
 ## Context Files
 
@@ -40,7 +40,7 @@ Load before working:
 ## Available Skills
 
 - propose — Feature proposal and option comparison
-- html-prototype — Generate static HTML prototype for confirmation
+- html — Generate static HTML prototype for confirmation
 - plan — Task breakdown and execution planning
 - execute — Step-by-step code implementation
 - review — Code review (security, performance, style)

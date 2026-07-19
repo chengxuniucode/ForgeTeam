@@ -20,7 +20,7 @@ generate_opencode() {
 - Standard (50-500 lines): plan → [html] → execute → review → verify → ship
 - Full (> 500 lines): propose → [html] → plan → execute → review → verify → ship
 
-Note: [html] = auto-insert html-prototype step when UI/page changes are involved
+Note: [html] = auto-insert html step when UI/page changes are involved
 
 ## Verification Gates
 
@@ -31,7 +31,7 @@ Note: [html] = auto-insert html-prototype step when UI/page changes are involved
 
 ## Available Skills
 
-- propose, html-prototype, plan, execute, review, verify, ship
+- propose, html, plan, execute, review, verify, ship
 - debug, memory, evolve, onboard
 
 Skills located at: ~/.forgeteam/skills/{name}/SKILL.md
